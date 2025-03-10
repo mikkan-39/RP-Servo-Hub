@@ -6,6 +6,7 @@
 #include <stdio.h>
 
 typedef unsigned char u8;
+typedef unsigned short u16;
 
 // UART defines
 // By default the stdout UART is `uart0`, so we will use the second one
@@ -21,6 +22,7 @@ typedef unsigned char u8;
 void UartInit();
 void HalfDuplexWrite(u8 *data, int length);
 void HalfDuplexWrite(u8 data);
+int ServoReceive(u8 *data, int len);
 void ServoWriteBuf(u8 ID, u8 MemAddr, u8 *nDat, u8 nLen, u8 Fun);
 
 enum ServoInstructions {
