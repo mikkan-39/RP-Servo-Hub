@@ -19,11 +19,7 @@ typedef unsigned short u16;
 #define UART_TX_PIN 4
 #define UART_RX_PIN 5
 
-void UartInit();
-void HalfDuplexWrite(u8 *data, int length);
-void HalfDuplexWrite(u8 data);
-int ServoReceive(u8 *data, int len);
-void ServoWriteBuf(u8 ID, u8 MemAddr, u8 *nDat, u8 nLen, u8 Fun);
+#define BROADCAST_ID 0xFE;
 
 enum ServoInstructions {
   PING = 0x01,       // Query the working status
@@ -31,7 +27,7 @@ enum ServoInstructions {
   WRITE = 0x03,      // Write data into the Control Table
   REG_WRITE = 0x04,  // Similar to WRITE DATA, the servo does not act until the ACTION instruction
   REG_ACTION = 0x05, // Action that applies REG WRITE writes
-  SYNC_READ = 0x82,  // ???
+  SYNC_READ = 0x82,  // Servos respond one by one
   SYNC_WRITE = 0x83, // For simultaneous control of multiple servos
   RESET = 0x06       // Reset control table to factory value
 };
@@ -77,5 +73,24 @@ enum ServoAddr {
   PRESENT_CURRENT_L = 69,
   PRESENT_CURRENT_H = 70,
 };
+
+struct ServoResponse {
+  uint8_t id;
+  uint8_t length;
+  uint8_t status;
+  uint8_t parameters[16];
+  uint8_t checksum;
+  bool valid;
+};
+
+void UartInit();
+void HalfDuplexWrite(u8 *data, int length);
+void HalfDuplexWrite(u8 data);
+void Host2SCS(u8 *DataL, u8 *DataH, u16 Data);
+u16 SCS2Host(u8 DataL, u8 DataH);
+int ServoReceive(u8 *data, int len);
+void ServoWriteBuf(u8 ID, u8 MemAddr, u8 *nDat, u8 nLen, u8 Fun);
+void SyncRead(u8 ID[], u8 IDN, u8 MemAddr, u8 nLen);
+ServoResponse ServoDecode(uint8_t *data, uint8_t dataLength);
 
 #endif

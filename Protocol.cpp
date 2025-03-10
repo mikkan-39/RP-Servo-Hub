@@ -42,6 +42,7 @@ u16 SCS2Host(u8 DataL, u8 DataH) {
   return Data;
 }
 
+// Returns the number of received bytes
 int ServoReceive(u8 *data, int len) {
   int i = 0;
   int ComData;
@@ -60,58 +61,56 @@ int ServoReceive(u8 *data, int len) {
   return i;
 }
 
-void ServoWriteBuf(u8 ID, u8 MemAddr, u8 *nDat, u8 nLen, u8 Function) {
+void ServoWriteBuf(u8 ID, u8 Function, u8 MemAddr, u8 *nDat, u8 nLen) {
   u8 msgLen = nDat ? (nLen + 3) : 2;
   u8 CheckSum = ID + msgLen + Function + (nDat ? MemAddr : 0);
 
-  u8 bBuf[6 + nLen];
-  bBuf[0] = 0xff;
-  bBuf[1] = 0xff;
-  bBuf[2] = ID;
-  bBuf[3] = msgLen;
-  bBuf[4] = Function;
+  u8 buff[6 + nLen];
+  buff[0] = 0xff;
+  buff[1] = 0xff;
+  buff[2] = ID;
+  buff[3] = msgLen;
+  buff[4] = Function;
 
   u8 index = 5;
   if (nDat) {
-    bBuf[index++] = MemAddr;
+    buff[index++] = MemAddr;
     for (u8 i = 0; i < nLen; i++) {
-      bBuf[index++] = nDat[i];
+      buff[index++] = nDat[i];
       CheckSum += nDat[i];
     }
   }
 
-  bBuf[index] = ~CheckSum;
+  buff[index] = ~CheckSum;
 
-  HalfDuplexWrite(bBuf, index + 1);
+  HalfDuplexWrite(buff, index + 1);
 }
 
 void SyncWrite(u8 ID[], u8 IDN, u8 MemAddr, u8 *nDat, u8 nLen) {
   u8 mesLen = ((nLen + 1) * IDN + 4);
-  u8 Sum = 0xfe + mesLen + SYNC_WRITE + MemAddr + nLen;
+  u8 checkSum = 0xfe + mesLen + SYNC_WRITE + MemAddr + nLen;
+  u8 buff[7 + (IDN * (nLen + 1)) + 1];
 
-  u8 bBuf[7 + (IDN * (nLen + 1)) + 1];
-
-  bBuf[0] = 0xff;
-  bBuf[1] = 0xff;
-  bBuf[2] = 0xfe; // Broadcast ID
-  bBuf[3] = mesLen;
-  bBuf[4] = SYNC_WRITE;
-  bBuf[5] = MemAddr;
-  bBuf[6] = nLen;
+  buff[0] = 0xFF;
+  buff[1] = 0xFF;
+  buff[2] = BROADCAST_ID;
+  buff[3] = mesLen;
+  buff[4] = SYNC_WRITE;
+  buff[5] = MemAddr;
+  buff[6] = nLen;
 
   u8 index = 7;
   for (u8 i = 0; i < IDN; i++) {
-    bBuf[index++] = ID[i];
-    Sum += ID[i];
+    buff[index++] = ID[i];
+    checkSum += ID[i];
     for (u8 j = 0; j < nLen; j++) {
-      bBuf[index++] = nDat[i * nLen + j];
-      Sum += nDat[i * nLen + j];
+      buff[index++] = nDat[i * nLen + j];
+      checkSum += nDat[i * nLen + j];
     }
   }
 
-  bBuf[index] = ~Sum;
-
-  HalfDuplexWrite(bBuf, index + 1);
+  buff[index] = ~checkSum;
+  HalfDuplexWrite(buff, index + 1);
 }
 
 inline void SyncWriteU16(u8 ID[], u8 IDN, u16 Values[], u8 MemAddr) {
@@ -124,4 +123,60 @@ inline void SyncWriteU16(u8 ID[], u8 IDN, u16 Values[], u8 MemAddr) {
 
 inline void SyncWriteU8(u8 ID[], u8 IDN, u8 Values[], u8 MemAddr) {
   SyncWrite(ID, IDN, MemAddr, Values, 1);
+}
+
+void SyncRead(u8 ID[], u8 IDN, u8 MemAddr, u8 nLen) {
+  u8 checkSum = (4 + 0xfe) + IDN + MemAddr + nLen + SYNC_READ;
+  u8 i;
+  u8 buff[7 + IDN];
+  buff[0] = 0xFF;
+  buff[1] = 0xFF;
+  buff[2] = BROADCAST_ID;
+  buff[3] = IDN + 4;
+  buff[4] = SYNC_READ;
+  buff[5] = MemAddr;
+  buff[6] = nLen;
+  u8 index = 7;
+  for (i = 0; i < IDN; i++) {
+    buff[index++] = ID[i];
+    checkSum += ID[i];
+  }
+  checkSum = ~checkSum;
+  buff[index] = checkSum;
+  HalfDuplexWrite(buff, index + 1);
+}
+
+ServoResponse ServoDecode(uint8_t *data, uint8_t dataLength) {
+  ServoResponse response = {0, 0, 0, {0}, 0, false};
+
+  // Ensure minimum length (header + ID + length + status + checksum)
+  if (dataLength < 6 || data[0] != 0xFF || data[1] != 0xFF) {
+    return response;
+  }
+
+  response.id = data[2];
+  response.length = data[3];
+  response.status = data[4];
+
+  // Ensure reported length matches actual received length
+  if (dataLength != response.length + 4) {
+    return response;
+  }
+
+  // Extract parameters
+  uint8_t checksum = response.id + response.length + response.status;
+  for (uint8_t i = 0; i < response.length - 2; i++) {
+    response.parameters[i] = data[5 + i];
+    checksum += response.parameters[i];
+  }
+
+  // Extract received checksum
+  response.checksum = data[5 + response.length - 2];
+
+  // Validate checksum
+  if ((~checksum & 0xFF) == response.checksum) {
+    response.valid = true;
+  }
+
+  return response;
 }

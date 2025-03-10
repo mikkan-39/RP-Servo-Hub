@@ -1,45 +1,5 @@
 #include "Controller.h"
 
-constexpr int ServoNum = 10; // Number of servos
-
-struct SensorData {
-  int16_t position = 0;
-  int16_t velocity = 0;
-  int16_t acceleration = 0;
-  int16_t motorCurrent = 0;
-};
-
-struct DesiredSettings {
-  int16_t targetPosition = 0;
-  int16_t targetSpeed = 0; // 0 means no speed limit
-  int16_t maxLoad = 0;     // 0 means no load limit
-  int16_t minPosition = 0;
-  int16_t maxPosition = 0;
-};
-
-struct ControllerState {
-  // Position control PID gains
-  float kp = 1.0f;
-  float ki = 1.0f;
-  float kd = 1.0f;
-  // Integral gain for current limiting
-  float kiCurrent = 0.5f;
-
-  // Controller state
-  float integral = 0.0f;
-  float integralCurrent = 0.0f;
-  float previousError = 0.0f;
-
-  int16_t positionSetpoint = 0;
-  // Sensor Wrapping
-  int16_t positionOffset = 0;
-};
-
-SensorData sensorData[ServoNum] = {};
-DesiredSettings desiredSettings[ServoNum] = {};
-ControllerState controllerStates[ServoNum] = {};
-float controlOutputArray[ServoNum] = {};
-
 float computePID(int servoID, int16_t setpoint, int16_t actualPosition, int16_t maxLoad,
                  int16_t current, ControllerState &controller) {
   float error = setpoint - actualPosition;
@@ -72,10 +32,10 @@ float computePID(int servoID, int16_t setpoint, int16_t actualPosition, int16_t 
 
 void updateServoControl(int servoID, int frequency) {
   // Retrieve sensor data
-  int16_t position = sensorData[servoID].position;
-  int16_t velocity = sensorData[servoID].velocity;
-  int16_t acceleration = sensorData[servoID].acceleration;
-  int16_t current = sensorData[servoID].motorCurrent;
+  int16_t position = servoData[servoID].position;
+  int16_t velocity = servoData[servoID].velocity;
+  int16_t acceleration = servoData[servoID].acceleration;
+  int16_t current = servoData[servoID].motorCurrent;
 
   // Retrieve desired settings
   int16_t targetPosition = desiredSettings[servoID].targetPosition;
