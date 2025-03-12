@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <cstdint>
+#include <stdio.h>
 
 struct ServoData {
   bool pinged = false;
@@ -14,20 +15,20 @@ struct ServoData {
 };
 
 struct DesiredSettings {
-  int16_t targetPosition = 0;
+  int16_t targetPosition = 2048;
   int16_t targetSpeed = 0; // 0 means no speed limit
-  int16_t maxLoad = 0;     // 0 means no load limit
+  int16_t maxLoad = 0;     // 0 means no load limit, max 500
   int16_t minPosition = 0;
-  int16_t maxPosition = 0;
+  int16_t maxPosition = 4095;
 };
 
 struct ControllerState {
   // Position control PID gains
-  float kp = 1.0f;
-  float ki = 1.0f;
-  float kd = 1.0f;
+  float kp = 10.0f;
+  float ki = 0.05f;
+  float kd = 8.0f;
   // Integral gain for current limiting
-  float kiCurrent = 0.5f;
+  float kiCurrent = 0.1f;
 
   // Controller state
   float integral = 0.0f;

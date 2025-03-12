@@ -19,7 +19,7 @@ typedef unsigned short u16;
 #define UART_TX_PIN 4
 #define UART_RX_PIN 5
 
-#define BROADCAST_ID 0xFE;
+constexpr u8 BROADCAST_ID = 0xFE;
 
 enum ServoInstructions {
   PING = 0x01,       // Query the working status
@@ -89,7 +89,9 @@ void HalfDuplexWrite(u8 data);
 void Host2SCS(u8 *DataL, u8 *DataH, u16 Data);
 u16 SCS2Host(u8 DataL, u8 DataH);
 int ServoReceive(u8 *data, int len);
-void ServoWriteBuf(u8 ID, u8 MemAddr, u8 *nDat, u8 nLen, u8 Fun);
+void ServoWriteBuf(u8 ID, u8 Function, u8 MemAddr, u8 *nDat, u8 nLen);
+void SyncWriteU16(u8 ID[], u8 IDN, u16 Values[], u8 MemAddr);
+void SyncWriteU8(u8 ID[], u8 IDN, u8 Values[], u8 MemAddr);
 void SyncRead(u8 ID[], u8 IDN, u8 MemAddr, u8 nLen);
 ServoResponse ServoDecode(uint8_t *data, uint8_t dataLength);
 

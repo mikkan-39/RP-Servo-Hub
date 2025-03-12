@@ -88,7 +88,7 @@ void ServoWriteBuf(u8 ID, u8 Function, u8 MemAddr, u8 *nDat, u8 nLen) {
 
 void SyncWrite(u8 ID[], u8 IDN, u8 MemAddr, u8 *nDat, u8 nLen) {
   u8 mesLen = ((nLen + 1) * IDN + 4);
-  u8 checkSum = 0xfe + mesLen + SYNC_WRITE + MemAddr + nLen;
+  u8 checkSum = BROADCAST_ID + mesLen + SYNC_WRITE + MemAddr + nLen;
   u8 buff[7 + (IDN * (nLen + 1)) + 1];
 
   buff[0] = 0xFF;
@@ -113,7 +113,7 @@ void SyncWrite(u8 ID[], u8 IDN, u8 MemAddr, u8 *nDat, u8 nLen) {
   HalfDuplexWrite(buff, index + 1);
 }
 
-inline void SyncWriteU16(u8 ID[], u8 IDN, u16 Values[], u8 MemAddr) {
+void SyncWriteU16(u8 ID[], u8 IDN, u16 Values[], u8 MemAddr) {
   u8 offbuf[2 * IDN];
   for (u8 i = 0; i < IDN; i++) {
     Host2SCS(offbuf + i * 2, offbuf + i * 2 + 1, Values[i]);
@@ -121,12 +121,12 @@ inline void SyncWriteU16(u8 ID[], u8 IDN, u16 Values[], u8 MemAddr) {
   SyncWrite(ID, IDN, MemAddr, offbuf, 2);
 }
 
-inline void SyncWriteU8(u8 ID[], u8 IDN, u8 Values[], u8 MemAddr) {
+void SyncWriteU8(u8 ID[], u8 IDN, u8 Values[], u8 MemAddr) {
   SyncWrite(ID, IDN, MemAddr, Values, 1);
 }
 
 void SyncRead(u8 ID[], u8 IDN, u8 MemAddr, u8 nLen) {
-  u8 checkSum = (4 + 0xfe) + IDN + MemAddr + nLen + SYNC_READ;
+  u8 checkSum = (4 + BROADCAST_ID) + IDN + MemAddr + nLen + SYNC_READ;
   u8 i;
   u8 buff[7 + IDN];
   buff[0] = 0xFF;

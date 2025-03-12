@@ -1,8 +1,13 @@
 #include "Controller.h"
 
+constexpr float integralClamp = 1024.0f;
+
 float computePID(int servoID, int16_t setpoint, int16_t actualPosition, int16_t maxLoad,
                  int16_t current, ControllerState &controller) {
   float error = setpoint - actualPosition;
+
+  // printf("Setpoint %d\n", setpoint);
+  // printf("Position %d\n", actualPosition);
 
   // For 360-control
   // // Ensure that error is within the range -2048 to +2047
@@ -13,21 +18,32 @@ float computePID(int servoID, int16_t setpoint, int16_t actualPosition, int16_t 
   // }
 
   controller.integral += error;
+  controller.integral = std::clamp(controller.integral, -integralClamp, integralClamp);
   float derivative = error - controller.previousError;
   controller.previousError = error;
 
+  // printf("P %f\n", error * controller.kp);
+  // printf("I %f\n", controller.integral * controller.ki);
+  // printf("D %f\n", derivative * controller.kd);
+
   // Current limiting inside PID control
   if (maxLoad > 0) {
-    float currentError = float(maxLoad) - float(current);
+    float currentError = float(current) - float(maxLoad);
     controller.integralCurrent += currentError;
+    controller.integralCurrent = std::clamp(controller.integralCurrent, 0.0f, integralClamp);
     float currentLimitFactor =
-        std::max(0.1f, 1.0f - controller.kiCurrent * controller.integralCurrent);
+        std::clamp(1.0f - controller.kiCurrent * controller.integralCurrent, 0.1f, 1.0f);
+    // printf("PresentCurrent %d\n", current);
+    // printf("CurrentError %f\n", currentError);
+    // printf("CurrentLimit %f\n", currentLimitFactor);
     return (controller.kp * error + controller.ki * controller.integral +
             controller.kd * derivative) *
-           currentLimitFactor;
+           currentLimitFactor * -1.0f;
   }
 
-  return controller.kp * error + controller.ki * controller.integral + controller.kd * derivative;
+  return (controller.kp * error + controller.ki * controller.integral +
+          controller.kd * derivative) *
+         -1.0f;
 }
 
 void updateServoControl(int servoID, int frequency) {
@@ -44,6 +60,7 @@ void updateServoControl(int servoID, int frequency) {
   int16_t minPosition = desiredSettings[servoID].minPosition;
   int16_t maxPosition = desiredSettings[servoID].maxPosition;
 
+  // printf("\n\nTarget position %d\n", targetPosition);
   // Retrieve PID state
   ControllerState &controller = controllerStates[servoID];
 
