@@ -40,11 +40,7 @@ struct ControllerState {
   int16_t positionOffset = 0;
 };
 
-void updateServoControl(int servoID, int frequency);
-
-extern ServoData servoData[];
-extern DesiredSettings desiredSettings[];
-extern ControllerState controllerStates[];
-extern float controlOutputArray[];
+int updateServoControl(int servoID, int frequency, ServoData *servoData,
+                       DesiredSettings *desiredSettings, ControllerState *controllerStates);
 
 #endif

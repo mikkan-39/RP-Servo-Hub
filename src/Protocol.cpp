@@ -88,14 +88,14 @@ void ServoWriteBuf(u8 ID, u8 Function, u8 MemAddr, u8 *nDat, u8 nLen) {
 
 void SyncWrite(u8 ID[], u8 IDN, u8 MemAddr, u8 *nDat, u8 nLen) {
   u8 mesLen = ((nLen + 1) * IDN + 4);
-  u8 checkSum = BROADCAST_ID + mesLen + SYNC_WRITE + MemAddr + nLen;
+  u8 checkSum = BROADCAST_ID + mesLen + ServoInstruction::SYNC_WRITE + MemAddr + nLen;
   u8 buff[7 + (IDN * (nLen + 1)) + 1];
 
   buff[0] = 0xFF;
   buff[1] = 0xFF;
   buff[2] = BROADCAST_ID;
   buff[3] = mesLen;
-  buff[4] = SYNC_WRITE;
+  buff[4] = ServoInstruction::SYNC_WRITE;
   buff[5] = MemAddr;
   buff[6] = nLen;
 
@@ -126,16 +126,18 @@ void SyncWriteU8(u8 ID[], u8 IDN, u8 Values[], u8 MemAddr) {
 }
 
 void SyncRead(u8 ID[], u8 IDN, u8 MemAddr, u8 nLen) {
-  u8 checkSum = (4 + BROADCAST_ID) + IDN + MemAddr + nLen + SYNC_READ;
+  u8 checkSum = (4 + BROADCAST_ID) + IDN + MemAddr + nLen + ServoInstruction::SYNC_READ;
   u8 i;
   u8 buff[7 + IDN];
+
   buff[0] = 0xFF;
   buff[1] = 0xFF;
   buff[2] = BROADCAST_ID;
   buff[3] = IDN + 4;
-  buff[4] = SYNC_READ;
+  buff[4] = ServoInstruction::SYNC_READ;
   buff[5] = MemAddr;
   buff[6] = nLen;
+
   u8 index = 7;
   for (i = 0; i < IDN; i++) {
     buff[index++] = ID[i];

@@ -46,7 +46,8 @@ float computePID(int servoID, int16_t setpoint, int16_t actualPosition, int16_t 
          -1.0f;
 }
 
-void updateServoControl(int servoID, int frequency) {
+int updateServoControl(int servoID, int frequency, ServoData *servoData,
+                       DesiredSettings *desiredSettings, ControllerState *controllerStates) {
   // Retrieve sensor data
   int16_t position = servoData[servoID].position;
   int16_t velocity = servoData[servoID].velocity;
@@ -71,8 +72,7 @@ void updateServoControl(int servoID, int frequency) {
   if ((previousPosition > maxPosition && position < minPosition) ||
       (previousPosition < minPosition && position > maxPosition)) {
     // If we crossed a limit due to wrapping, set positionSetpoint to the nearest limit
-    controlOutputArray[servoID] = 0;
-    return;
+    return 0;
   }
 
   // Determine position setpoint accounting for speed
@@ -99,5 +99,5 @@ void updateServoControl(int servoID, int frequency) {
       computePID(servoID, controller.positionSetpoint, position, maxLoad, current, controller);
 
   // Store the output
-  controlOutputArray[servoID] = controlOutput;
+  return controlOutput;
 }

@@ -1,6 +1,8 @@
 #ifndef _PROTOCOL_H
 #define _PROTOCOL_H
 
+#include "Config.h"
+#include "Controller.h"
 #include "hardware/uart.h"
 #include "pico/stdlib.h"
 #include <stdio.h>
@@ -8,20 +10,10 @@
 typedef unsigned char u8;
 typedef unsigned short u16;
 
-// UART defines
-// By default the stdout UART is `uart0`, so we will use the second one
-#define UART_ID uart1
-#define BAUD_RATE 1000000
-
-// Use pins 4 and 5 for UART1
-// Pins can be changed, see the GPIO function select table in the datasheet for
-// information on GPIO assignments
-#define UART_TX_PIN 4
-#define UART_RX_PIN 5
-
 constexpr u8 BROADCAST_ID = 0xFE;
 
-enum ServoInstructions {
+namespace ServoInstruction {
+enum Instructions {
   PING = 0x01,       // Query the working status
   READ = 0x02,       // Query data in the Control Table
   WRITE = 0x03,      // Write data into the Control Table
@@ -31,8 +23,10 @@ enum ServoInstructions {
   SYNC_WRITE = 0x83, // For simultaneous control of multiple servos
   RESET = 0x06       // Reset control table to factory value
 };
+}
 
-enum ServoAddr {
+namespace ServoAddr {
+enum Addr {
   //-------EEPROM(read only)--------
   MODEL_L = 3,
   MODEL_H = 4,
@@ -73,6 +67,7 @@ enum ServoAddr {
   PRESENT_CURRENT_L = 69,
   PRESENT_CURRENT_H = 70,
 };
+}
 
 struct ServoResponse {
   uint8_t id;

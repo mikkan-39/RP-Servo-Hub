@@ -39,9 +39,9 @@ pico_sdk_init()
 # Add executable. Default name is the project name, version 0.1
 add_executable( RP-Servo-Hub 
     RP-Servo-Hub.cpp 
-    Controller.cpp
-    Protocol.cpp 
-    Utils.cpp
+    src/Controller.cpp
+    src/Protocol.cpp 
+    src/Utils.cpp
 )
 
 pico_set_program_name(RP-Servo-Hub "RP-Servo-Hub")
@@ -62,6 +62,8 @@ target_link_libraries(RP-Servo-Hub
 target_include_directories(RP-Servo-Hub PRIVATE
         ${CMAKE_CURRENT_LIST_DIR}
 )
+
+include_directories(include)
 
 pico_add_extra_outputs(RP-Servo-Hub)
 
