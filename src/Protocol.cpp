@@ -75,7 +75,7 @@ void ServoWriteBuf(u8 ID, u8 Function, u8 MemAddr, u8 *nDat, u8 nLen) {
   u8 index = 5;
   if (nDat) {
     buff[index++] = MemAddr;
-    for (u8 i = 0; i < nLen; i++) {
+    for (int i = 0; i < nLen; i++) {
       buff[index++] = nDat[i];
       CheckSum += nDat[i];
     }
@@ -100,7 +100,7 @@ void SyncWrite(u8 ID[], u8 IDN, u8 MemAddr, u8 *nDat, u8 nLen) {
   buff[6] = nLen;
 
   u8 index = 7;
-  for (u8 i = 0; i < IDN; i++) {
+  for (int i = 0; i < IDN; i++) {
     buff[index++] = ID[i];
     checkSum += ID[i];
     for (u8 j = 0; j < nLen; j++) {
@@ -127,7 +127,6 @@ void SyncWriteU8(u8 ID[], u8 IDN, u8 Values[], u8 MemAddr) {
 
 void SyncRead(u8 ID[], u8 IDN, u8 MemAddr, u8 nLen) {
   u8 checkSum = (4 + BROADCAST_ID) + IDN + MemAddr + nLen + ServoInstruction::SYNC_READ;
-  u8 i;
   u8 buff[7 + IDN];
 
   buff[0] = 0xFF;
@@ -139,7 +138,7 @@ void SyncRead(u8 ID[], u8 IDN, u8 MemAddr, u8 nLen) {
   buff[6] = nLen;
 
   u8 index = 7;
-  for (i = 0; i < IDN; i++) {
+  for (int i = 0; i < IDN; i++) {
     buff[index++] = ID[i];
     checkSum += ID[i];
   }
@@ -148,7 +147,7 @@ void SyncRead(u8 ID[], u8 IDN, u8 MemAddr, u8 nLen) {
   HalfDuplexWrite(buff, index + 1);
 }
 
-ServoResponse ServoDecode(uint8_t *data, uint8_t dataLength) {
+ServoResponse ServoDecode(u8 *data, u8 dataLength) {
   ServoResponse response = {0, 0, 0, {0}, 0, false};
 
   // Ensure minimum length (header + ID + length + status + checksum)
@@ -160,22 +159,18 @@ ServoResponse ServoDecode(uint8_t *data, uint8_t dataLength) {
   response.length = data[3];
   response.status = data[4];
 
-  // Ensure reported length matches actual received length
   if (dataLength != response.length + 4) {
     return response;
   }
 
-  // Extract parameters
-  uint8_t checksum = response.id + response.length + response.status;
-  for (uint8_t i = 0; i < response.length - 2; i++) {
+  u8 checksum = response.id + response.length + response.status;
+  for (int i = 0; i < response.length - 2; i++) {
     response.parameters[i] = data[5 + i];
     checksum += response.parameters[i];
   }
 
-  // Extract received checksum
   response.checksum = data[5 + response.length - 2];
 
-  // Validate checksum
   if ((~checksum & 0xFF) == response.checksum) {
     response.valid = true;
   }

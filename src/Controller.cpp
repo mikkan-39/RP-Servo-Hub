@@ -55,11 +55,21 @@ int updateServoControl(int servoID, int frequency, ServoData *servoData,
   int16_t current = servoData[servoID].motorCurrent;
 
   // Retrieve desired settings
-  int16_t targetPosition = desiredSettings[servoID].targetPosition;
   int16_t targetSpeed = desiredSettings[servoID].targetSpeed;
   int16_t maxLoad = desiredSettings[servoID].maxLoad;
   int16_t minPosition = desiredSettings[servoID].minPosition;
   int16_t maxPosition = desiredSettings[servoID].maxPosition;
+
+  // Apply hard positional limits
+  if (desiredSettings[servoID].targetPosition < minPosition) {
+    printf("Servo hit positional limit! ID: %d\n", servoID);
+    desiredSettings[servoID].targetPosition = minPosition;
+  }
+  if (desiredSettings[servoID].targetPosition > maxPosition) {
+    printf("Servo hit positional limit! ID: %d\n", servoID);
+    desiredSettings[servoID].targetPosition = maxPosition;
+  }
+  int16_t targetPosition = desiredSettings[servoID].targetPosition;
 
   // printf("\n\nTarget position %d\n", targetPosition);
   // Retrieve PID state
@@ -69,11 +79,11 @@ int updateServoControl(int servoID, int frequency, ServoData *servoData,
   int16_t previousPosition = position - (velocity / frequency);
 
   // Detect and handle position overflow/underflow
-  if ((previousPosition > maxPosition && position < minPosition) ||
-      (previousPosition < minPosition && position > maxPosition)) {
-    // If we crossed a limit due to wrapping, set positionSetpoint to the nearest limit
-    return 0;
-  }
+  // if ((previousPosition > maxPosition && position < minPosition) ||
+  //     (previousPosition < minPosition && position > maxPosition)) {
+  //   // If we crossed a limit due to wrapping, set positionSetpoint to the nearest limit
+  //   return 0; // HACK
+  // }
 
   // Determine position setpoint accounting for speed
   if (targetSpeed > 0) {
@@ -87,12 +97,6 @@ int updateServoControl(int servoID, int frequency, ServoData *servoData,
   } else {
     controller.positionSetpoint = targetPosition;
   }
-
-  // Apply hard positional limits
-  if (controller.positionSetpoint < minPosition)
-    controller.positionSetpoint = minPosition;
-  if (controller.positionSetpoint > maxPosition)
-    controller.positionSetpoint = maxPosition;
 
   // Compute PID control with integrated current limiting
   float controlOutput =

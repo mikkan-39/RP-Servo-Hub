@@ -30,7 +30,9 @@ int ConnectedServos = 0;
 u8 ConnectedIDs[ServoNum];
 
 int pingServos(ServoData *servoData) {
-  for (int id = 1; id < ServoNum; id++) {
+  ConnectedServos = 0;
+
+  for (int id = 1; id <= ServoNum; id++) {
     ServoWriteBuf(id, ServoInstruction::PING, 0, 0, 0);
     int responselen = 6;
     u8 response[responselen];
@@ -52,13 +54,20 @@ int pingServos(ServoData *servoData) {
   return ConnectedServos;
 }
 
-void setupServos() {
+void setupServos(DesiredSettings *desiredSettings, ServoLimits *servoLimits) {
+  for (int i = 0; i <= ServoNum; i++) {
+    desiredSettings[i].minPosition = servoLimits[i].lowerAngle;
+    desiredSettings[i].maxPosition = servoLimits[i].upperAngle;
+  }
   u8 modes[ConnectedServos];
   std::fill(modes, modes + ConnectedServos, 0x02);
   SyncWriteU8(ConnectedIDs, ConnectedServos, modes, ServoAddr::MODE);
 }
 
-void readServos(ServoData *servoData) {
+bool readServos(ServoData *servoData) {
+  if (ConnectedServos == 0 && pingServos(servoData) == 0)
+    return false;
+
   int dataLen = 4;
   int rxPacketLen = dataLen + 6;
   SyncRead(ConnectedIDs, ConnectedServos, ServoAddr::PRESENT_POSITION_L, dataLen);
@@ -98,23 +107,43 @@ void readServos(ServoData *servoData) {
     servoData[result.id].statusCode = result.status;
     servoData[result.id].motorCurrent = SCS2Host(result.parameters[0], result.parameters[1]);
   }
+
+  return true;
 }
 
 void pidTick(ServoData *servoData, DesiredSettings *desiredSettings,
              ControllerState *controllerStates, float *controlOutputArray) {
-  u16 pwmValues[ConnectedServos];
-
   for (int i = 0; i < ConnectedServos; i++) {
     int id = ConnectedIDs[i];
-    if (servoData[id].statusCode == 0)
+    if (servoData[id].statusCode == 0 && desiredSettings[id].enabled) {
       controlOutputArray[id] =
           updateServoControl(id, tickRate, servoData, desiredSettings, controllerStates);
+    } else {
+      controlOutputArray[id] = 0;
+    }
+  }
+}
+
+void writeServos(float *controlOutputArray) {
+  u16 pwmValues[ConnectedServos];
+  for (int i = 0; i < ConnectedServos; i++) {
+    int id = ConnectedIDs[i];
     u16 pwm = convertFloatToUShort(controlOutputArray[id]);
     pwmValues[i] = pwm;
   }
-
   SyncWriteU16(ConnectedIDs, ConnectedServos, pwmValues, ServoAddr::GOAL_TIME_L); // TODO
   // u8 buff[2];
   // Host2SCS(buff + 0, buff + 1, pwmValues[0]);
   // ServoWriteBuf(1, ServoInstruction::WRITE, ServoAddr::GOAL_TIME_L, buff, 2);
+}
+
+void setServoEnableSafe(int id, bool enabled, DesiredSettings *desiredSettings,
+                        ControllerState *controllerStates) {
+  if (enabled) {
+    desiredSettings[id].enabled = true;
+    ControllerState newState;
+    controllerStates[id] = newState;
+  } else {
+    desiredSettings[id].enabled = false;
+  }
 }

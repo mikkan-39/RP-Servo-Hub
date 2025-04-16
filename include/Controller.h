@@ -15,9 +15,10 @@ struct ServoData {
 };
 
 struct DesiredSettings {
+  bool enabled = false;
   int16_t targetPosition = 2048;
-  int16_t targetSpeed = 0; // 0 means no speed limit
-  int16_t maxLoad = 0;     // 0 means no load limit, max 500
+  int16_t targetSpeed = 1000; // 0 means no speed limit
+  int16_t maxLoad = 0;        // 0 means no load limit, max 500
   int16_t minPosition = 0;
   int16_t maxPosition = 4095;
 };
@@ -35,9 +36,10 @@ struct ControllerState {
   float integralCurrent = 0.0f;
   float previousError = 0.0f;
 
-  int16_t positionSetpoint = 0;
-  // Sensor Wrapping
-  int16_t positionOffset = 0;
+  int16_t positionSetpoint = 2048;
+
+  int16_t previousPosition = 2048; // For sensor wrapping detection. Set to middle value for the
+                                   // first tick, thus possibly unfit for speed calculations
 };
 
 int updateServoControl(int servoID, int frequency, ServoData *servoData,

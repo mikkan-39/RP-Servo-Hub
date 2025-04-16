@@ -30,7 +30,7 @@ include(pico_sdk_import.cmake)
 
 project(RP-Servo-Hub C CXX ASM)
 
-# set(PICO_CXX_ENABLE_EXCEPTIONS 1)
+set(PICO_CXX_ENABLE_EXCEPTIONS 1)
 set(PICO_DEOPTIMIZED_DEBUG 1)
 
 # Initialise the Raspberry Pi Pico SDK
@@ -39,6 +39,7 @@ pico_sdk_init()
 # Add executable. Default name is the project name, version 0.1
 add_executable( RP-Servo-Hub 
     RP-Servo-Hub.cpp 
+    src/CommandParsers.cpp
     src/Controller.cpp
     src/Protocol.cpp 
     src/Utils.cpp
