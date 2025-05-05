@@ -27,182 +27,123 @@ const char *ServoNamesById[] = {
 };
 
 void handlePing(ServoData *servoData) {
-  // Create a stringstream to accumulate the output
-  std::ostringstream output;
+  int bytesPerServo = 2;
+  const uint8_t payload_length = ServoNum * bytesPerServo;
+  uint8_t packet[3 + payload_length + 1]; // header +
+                                          // payload +
+                                          // checksum
+  packet[0] = START_BYTE;
+  packet[1] = StatusCodes::OK;
+  packet[2] = payload_length;
 
-  for (size_t i = 1; i <= ServoNum; ++i) {
-    if (servoData[i].pinged) {
-      // Print "OK" for true responses
-      output << std::left << std::setw(15) << green + "Servo " + std::to_string(i) << std::setw(15)
-             << ServoNamesById[i] << " OK " << reset << std::endl;
-    } else {
-      // Print "WARNING" in yellow for false responses
-      output << std::left << std::setw(15) << yellow + "Servo " + std::to_string(i) << std::setw(15)
-             << ServoNamesById[i] << " WARNING: did not respond" + reset << std::endl;
-    }
+  uint8_t *payload_ptr = &packet[3];
+
+  mutex_enter_blocking(&ServoDataMutex);
+  for (uint8_t i = 0; i < ServoNum; ++i) {
+    payload_ptr[i * bytesPerServo] = i;
+    payload_ptr[i * bytesPerServo + 1] = servoData[i + 1].statusCode;
   }
-  output << "PING ACK" << std::endl;
-  // Output all accumulated text at once
-  std::cout << output.str();
+  mutex_exit(&ServoDataMutex);
+
+  packet[3 + payload_length] = calculate_checksum(packet, 3 + payload_length - 1);
+
+  sendResponse(packet, 3 + payload_length + 1);
 }
 
 void handleQueryServoPositions(ServoData *servoData) {
-  std::ostringstream output;
-  output << "SERVOS_QUERY_POSITIONS: {";
-  for (int i = 1; i <= ServoNum; i++) {
-    if (servoData[i].pinged) {
-      output << "\"" << i << "\"" << ": " << servoData[i].position
-             << (i <= ServoNum - 1 ? ", " : "");
-    }
-  }
-  output << "}" << std::endl;
-  std::cout << output.str();
-}
+  int bytesPerServo = 3;
+  const uint8_t payload_length = ServoNum * bytesPerServo;
+  uint8_t packet[3 + payload_length + 1]; // header +
+                                          // payload +
+                                          // checksum
+  packet[0] = START_BYTE;
+  packet[1] = StatusCodes::OK;
+  packet[2] = payload_length;
 
-void handleQueryServoMoving(ServoData *servoData) {
-  std::ostringstream output;
-  output << "SERVOS_QUERY_MOVING: {";
-  for (int i = 1; i <= ServoNum; i++) {
-    if (servoData[i].pinged) {
-      output << "\"" << i << "\"" << ": " << true << (i <= ServoNum - 1 ? ", " : ""); // TODO
-                                                                                      // replace
-                                                                                      // true
-    }
+  uint8_t *payload_ptr = &packet[3];
+
+  mutex_enter_blocking(&ServoDataMutex);
+  for (uint8_t i = 0; i < ServoNum; ++i) {
+    payload_ptr[i * bytesPerServo] = i + 1;
+    uint8_t *fbytes = (uint8_t *)&servoData[i + 1].position;
+    payload_ptr[i * bytesPerServo + 1] = fbytes[0];
+    payload_ptr[i * bytesPerServo + 2] = fbytes[1];
   }
-  output << "}" << std::endl;
-  std::cout << output.str();
+  mutex_exit(&ServoDataMutex);
+
+  packet[3 + payload_length] = calculate_checksum(packet, 3 + payload_length - 1);
+
+  sendResponse(packet, 3 + payload_length + 1);
 }
 
 void handleQueryServoSpeed(ServoData *servoData) {
-  std::ostringstream output;
-  output << "SERVOS_QUERY_SPEED: {";
-  for (int i = 1; i <= ServoNum; i++) {
-    if (servoData[i].pinged) {
-      output << "\"" << i << "\"" << ": " << servoData[i].velocity
-             << (i <= ServoNum - 1 ? ", " : "");
-    }
+  int bytesPerServo = 3;
+  const uint8_t payload_length = ServoNum * bytesPerServo;
+  uint8_t packet[3 + payload_length + 1]; // header +
+                                          // payload +
+                                          // checksum
+  packet[0] = START_BYTE;
+  packet[1] = StatusCodes::OK;
+  packet[2] = payload_length;
+
+  uint8_t *payload_ptr = &packet[3];
+
+  mutex_enter_blocking(&ServoDataMutex);
+  for (uint8_t i = 0; i < ServoNum; ++i) {
+    payload_ptr[i * bytesPerServo] = i + 1;
+    uint8_t *fbytes = (uint8_t *)&servoData[i + 1].velocity;
+    payload_ptr[i * bytesPerServo + 1] = fbytes[0];
+    payload_ptr[i * bytesPerServo + 2] = fbytes[1];
   }
-  output << "}" << std::endl;
-  std::cout << output.str();
+  mutex_exit(&ServoDataMutex);
+
+  packet[3 + payload_length] = calculate_checksum(packet, 3 + payload_length - 1);
+
+  sendResponse(packet, 3 + payload_length + 1);
 }
 
-void handleSetServoPositions(const std::string &command, DesiredSettings *desiredSettings) {
-  std::istringstream iss(command);
-  std::string commandType;
-  iss >> commandType;
-
-  std::vector<u8> servoIDs;
-  std::vector<u16> values;
-
-  std::string pair;
-  while (iss >> pair) {
-    auto equalPos = pair.find('=');
-    if (equalPos == std::string::npos) {
-      std::cerr << "ERROR: Malformed pair: " << pair << std::endl;
+void handleSetServoPositions(const uint8_t *payload, uint8_t length,
+                             DesiredSettings *desiredSettings) {
+  size_t i = 0;
+  mutex_enter_blocking(&DesiredSettingsMutex);
+  while (i + 2 <= length) {
+    uint8_t id = payload[i++];
+    desiredSettings[id].enabled = true;
+    int16_t value = (int16_t)(payload[i] | (payload[i + 1] << 8));
+    i += 2;
+    if (id > ServoNum)
       continue;
-    }
-
-    try {
-      u8 id = static_cast<u8>(std::stoi(pair.substr(0, equalPos)));
-      u16 value = static_cast<u16>(std::stoi(pair.substr(equalPos + 1))); // was s16, TESTME
-
-      if (id <= ServoNum) {
-        desiredSettings[id].enabled = true;
-        desiredSettings[id].targetPosition = value;
-      }
-    } catch (const std::invalid_argument &e) {
-      std::cerr << "ERROR: Malformed pair: " << pair << std::endl;
-      continue;
-    }
+    desiredSettings[id].targetPosition = value;
   }
+  mutex_exit(&DesiredSettingsMutex);
 }
 
-void handleSetServoSpeeds(const std::string &command, DesiredSettings *desiredSettings) {
-  std::istringstream iss(command);
-  std::string commandType;
-  iss >> commandType;
-
-  std::vector<u8> servoIDs;
-  std::vector<u16> values;
-
-  std::string pair;
-  while (iss >> pair) {
-    auto equalPos = pair.find('=');
-    if (equalPos == std::string::npos) {
-      std::cerr << "ERROR: Malformed pair: " << pair << std::endl;
+void handleSetServoSpeeds(const uint8_t *payload, uint8_t length,
+                          DesiredSettings *desiredSettings) {
+  size_t i = 0;
+  mutex_enter_blocking(&DesiredSettingsMutex);
+  while (i + 2 <= length) {
+    uint8_t id = payload[i++];
+    int16_t value = (int16_t)(payload[i] | (payload[i + 1] << 8));
+    i += 2;
+    if (id > ServoNum)
       continue;
-    }
-
-    try {
-      u8 id = static_cast<u8>(std::stoi(pair.substr(0, equalPos)));
-      u16 value = static_cast<u16>(std::stoi(pair.substr(equalPos + 1)));
-
-      if (id <= ServoNum) {
-        desiredSettings[id].targetSpeed = value;
-      }
-    } catch (const std::invalid_argument &e) {
-      std::cerr << "ERROR: Malformed pair: " << pair << std::endl;
-      continue;
-    }
+    desiredSettings[id].targetSpeed = value;
   }
+  mutex_exit(&DesiredSettingsMutex);
 }
 
-void handleSetServoTorque(const std::string &command, DesiredSettings *desiredSettings) {
-  std::istringstream iss(command);
-  std::string commandType;
-  iss >> commandType;
-
-  std::vector<u8> servoIDs;
-  std::vector<u16> values;
-
-  std::string pair;
-  while (iss >> pair) {
-    auto equalPos = pair.find('=');
-    if (equalPos == std::string::npos) {
-      std::cerr << "ERROR: Malformed pair: " << pair << std::endl;
+void handleSetServoEnabled(const uint8_t *payload, uint8_t length,
+                           DesiredSettings *desiredSettings) {
+  size_t i = 0;
+  mutex_enter_blocking(&DesiredSettingsMutex);
+  while (i + 2 <= length) {
+    uint8_t id = payload[i++];
+    bool value = *(uint8_t *)(payload + i) ? true : false;
+    i += 1;
+    if (id > ServoNum)
       continue;
-    }
-
-    try {
-      u8 id = static_cast<u8>(std::stoi(pair.substr(0, equalPos)));
-      u16 value = static_cast<u16>(std::stoi(pair.substr(equalPos + 1)));
-
-      if (id <= ServoNum) {
-        desiredSettings[id].maxLoad = value;
-      }
-    } catch (const std::invalid_argument &e) {
-      std::cerr << "ERROR: Malformed pair: " << pair << std::endl;
-      continue;
-    }
+    desiredSettings[id].enabled = value;
   }
-}
-
-void handleSetServoEnabled(const std::string &command, DesiredSettings *desiredSettings) {
-  std::istringstream iss(command);
-  std::string commandType;
-  iss >> commandType;
-
-  std::vector<u8> servoIDs;
-  std::vector<u8> values;
-
-  std::string pair;
-  while (iss >> pair) {
-    auto equalPos = pair.find('=');
-    if (equalPos == std::string::npos) {
-      std::cerr << "ERROR: Malformed pair: " << pair << std::endl;
-      continue;
-    }
-
-    try {
-      u8 id = static_cast<u8>(std::stoi(pair.substr(0, equalPos)));
-      u8 value = static_cast<u8>(std::stoi(pair.substr(equalPos + 1)));
-
-      if (id <= ServoNum) {
-        desiredSettings[id].enabled = value ? true : false;
-      }
-    } catch (const std::invalid_argument &e) {
-      std::cerr << "ERROR: Malformed pair: " << pair << std::endl;
-      continue;
-    }
-  }
+  mutex_exit(&DesiredSettingsMutex);
 }

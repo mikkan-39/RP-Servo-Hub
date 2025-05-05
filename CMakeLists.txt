@@ -41,8 +41,20 @@ add_executable( RP-Servo-Hub
     RP-Servo-Hub.cpp 
     src/CommandParsers.cpp
     src/Controller.cpp
+    src/UartUtils.cpp
     src/Protocol.cpp 
     src/Utils.cpp
+    Core1.cpp
+)
+
+# Compiler and linker flags for stripping and warnings
+target_compile_options(RP-Servo-Hub PRIVATE
+    -Wall
+    -Wextra
+    -Wunused
+    -Wunused-parameter
+    -Wunused-function
+    -Wunused-variable
 )
 
 pico_set_program_name(RP-Servo-Hub "RP-Servo-Hub")
@@ -52,12 +64,12 @@ pico_set_program_version(RP-Servo-Hub "0.1")
 # pico_set_binary_type(RP-Servo-Hub no_flash)
 
 # Modify the below lines to enable/disable output over UART/USB
-pico_enable_stdio_uart(RP-Servo-Hub 1)
-pico_enable_stdio_usb(RP-Servo-Hub 0)
+# pico_enable_stdio_uart(RP-Servo-Hub 0)
+pico_enable_stdio_usb(RP-Servo-Hub 1)
 
 # Add the standard library to the build
 target_link_libraries(RP-Servo-Hub
-        pico_stdlib)
+        pico_stdlib pico_multicore)
 
 # Add the standard include files to the build
 target_include_directories(RP-Servo-Hub PRIVATE

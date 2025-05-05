@@ -2,13 +2,17 @@
 
 #include "hardware/uart.h"
 #include "pico/stdlib.h"
-#include <iostream>
 
 #include "CommandParsers.h"
 #include "Config.h"
 #include "Controller.h"
+#include "Core1.h"
 #include "Protocol.h"
+#include "UartUtils.h"
 #include "Utils.h"
+
+mutex_t ServoDataMutex;
+mutex_t DesiredSettingsMutex;
 
 // +1 since servos are 1-indexed
 ServoData servoData[ServoNum + 1];
@@ -26,9 +30,9 @@ void calculateServoLimits() {
 }
 
 bool tickCallback(repeating_timer_t *rt) {
+  (void)rt;
   bool readSuccess = readServos(servoData);
   if (!readSuccess) {
-    printf("WARNING: No servos found!\n");
     return true;
   }
   pidTick(servoData, desiredSettings, controllerStates, controlOutputArray);
@@ -36,81 +40,28 @@ bool tickCallback(repeating_timer_t *rt) {
   return true;
 }
 
-bool testCallback(repeating_timer_t *rt) {
-  if (desiredSettings[1].targetPosition == 3072) {
-    desiredSettings[1].targetPosition = 1024;
-    desiredSettings[1].targetSpeed = 2048;
-  } else {
-    desiredSettings[1].targetPosition = 3072;
-    desiredSettings[1].targetSpeed = 0;
-  }
-  return true;
-}
-
-void cleanupAndExit() {
-  for (u8 id = 1; id <= ServoNum; id++) {
-    desiredSettings[id].enabled = false;
-    controlOutputArray[id] = 0;
-  }
-
-  writeServos(controlOutputArray);
-}
-
 int main() {
   stdio_init_all();
+  mutex_init(&ServoDataMutex);
+  mutex_init(&DesiredSettingsMutex);
+
   UartInit();
   calculateServoLimits();
 
-  int foundServos = pingServos(servoData);
+  pingServos(servoData);
 
   setupServos(desiredSettings, servoLimits);
 
   struct repeating_timer PIDtimer;
 
-  struct repeating_timer testTimer;
+  add_repeating_timer_us(-1000000 / tickRate, tickCallback, NULL, &PIDtimer);
 
-  add_repeating_timer_us(1000000 / tickRate, tickCallback, NULL, &PIDtimer);
-
-  // add_repeating_timer_ms(3000, testCallback, NULL, &testTimer);
-
-  std::cout << "INIT: Backbone subsystem started." << std::endl;
-
-  std::string command;
+  multicore_lockout_victim_init();
+  multicore_launch_core1(core1_thread);
 
   while (true) {
-    std::getline(std::cin, command);
-
-    if (command.empty()) {
-      continue;
-    }
-
-    if (command == "PING") {
-      pingServos(servoData);
-      setupServos(desiredSettings, servoLimits);
-      handlePing(servoData);
-    } else if (command == "SERVOS_QUERY_POSITIONS") {
-      handleQueryServoPositions(servoData);
-    } else if (command == "SERVOS_QUERY_MOVING") {
-      handleQueryServoMoving(servoData);
-    } else if (command == "SERVOS_QUERY_SPEED") {
-      handleQueryServoSpeed(servoData);
-    } else if (command.rfind("SET_SERVO_POS", 0) == 0) {
-      handleSetServoPositions(command, desiredSettings);
-    } else if (command.rfind("SET_SERVO_SPEED", 0) == 0) {
-      handleSetServoSpeeds(command, desiredSettings);
-    } else if (command.rfind("SET_SERVO_TORQUE", 0) == 0) {
-      handleSetServoTorque(command, desiredSettings);
-    } else if (command.rfind("SET_SERVO_ENABLED", 0) == 0) {
-      handleSetServoEnabled(command, desiredSettings);
-    } else if (command == "EXIT") {
-      cleanupAndExit();
-    } else {
-      std::cout << "ERROR: Unknown command to Backbone: " << command << std::endl;
-      pingServos(servoData);
-      setupServos(desiredSettings, servoLimits);
-      handlePing(servoData);
-    }
-  }
+    tight_loop_contents();
+  };
 
   return 0;
 }

@@ -1,11 +1,22 @@
 #ifndef _CONFIG_H
 #define _CONFIG_H
+#include "pico/multicore.h"
 #include <cstdint>
 
-#define UART_ID uart1
+// #define STDIO_COMMS
+
+extern mutex_t ServoDataMutex;
+extern mutex_t DesiredSettingsMutex;
+
+#define SERVO_UART_ID uart1
+#define SERVO_BAUD_RATE 1000000
+#define SERVO_UART_TX_PIN 4
+#define SERVO_UART_RX_PIN 5
+
+#define UART_ID uart0
 #define BAUD_RATE 1000000
-#define UART_TX_PIN 4
-#define UART_RX_PIN 5
+#define UART_TX_PIN 0
+#define UART_RX_PIN 1
 
 constexpr int ServoNum = 22;
 constexpr int tickRate = 25;

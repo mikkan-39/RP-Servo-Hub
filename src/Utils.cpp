@@ -44,10 +44,12 @@ int pingServos(ServoData *servoData) {
 
     ServoResponse result = ServoDecode(response, responselen);
     if (result.valid) {
+      mutex_enter_blocking(&ServoDataMutex);
       ConnectedIDs[ConnectedServos] = id;
       ConnectedServos++;
       servoData[id].pinged = true;
       servoData[id].statusCode = result.status;
+      mutex_exit(&ServoDataMutex);
     }
   }
 
@@ -55,10 +57,12 @@ int pingServos(ServoData *servoData) {
 }
 
 void setupServos(DesiredSettings *desiredSettings, ServoLimits *servoLimits) {
+  mutex_enter_blocking(&DesiredSettingsMutex);
   for (int i = 0; i <= ServoNum; i++) {
     desiredSettings[i].minPosition = servoLimits[i].lowerAngle;
     desiredSettings[i].maxPosition = servoLimits[i].upperAngle;
   }
+  mutex_exit(&DesiredSettingsMutex);
   u8 modes[ConnectedServos];
   std::fill(modes, modes + ConnectedServos, 0x02);
   SyncWriteU8(ConnectedIDs, ConnectedServos, modes, ServoAddr::MODE);
@@ -83,10 +87,13 @@ bool readServos(ServoData *servoData) {
     if (!result.valid)
       continue;
 
+    mutex_enter_blocking(&ServoDataMutex);
     servoData[result.id].statusCode = result.status;
     servoData[result.id].position = SCS2Host(result.parameters[0], result.parameters[1]);
     servoData[result.id].velocity = SCS2Host(result.parameters[2], result.parameters[3]);
-    servoData[result.id].motorCurrent = SCS2Host(result.parameters[4], result.parameters[5]);
+    servoData[result.id].motorCurrent =
+        SCS2Host(result.parameters[4], result.parameters[5]); // TODO What is this?
+    mutex_exit(&ServoDataMutex);
   }
 
   dataLen = 2;
@@ -104,8 +111,10 @@ bool readServos(ServoData *servoData) {
     if (!result.valid)
       continue;
 
+    mutex_enter_blocking(&ServoDataMutex);
     servoData[result.id].statusCode = result.status;
     servoData[result.id].motorCurrent = SCS2Host(result.parameters[0], result.parameters[1]);
+    mutex_exit(&ServoDataMutex);
   }
 
   return true;
@@ -113,6 +122,7 @@ bool readServos(ServoData *servoData) {
 
 void pidTick(ServoData *servoData, DesiredSettings *desiredSettings,
              ControllerState *controllerStates, float *controlOutputArray) {
+  mutex_enter_blocking(&DesiredSettingsMutex);
   for (int i = 0; i < ConnectedServos; i++) {
     int id = ConnectedIDs[i];
     if (servoData[id].statusCode == 0 && desiredSettings[id].enabled) {
@@ -122,6 +132,7 @@ void pidTick(ServoData *servoData, DesiredSettings *desiredSettings,
       controlOutputArray[id] = 0;
     }
   }
+  mutex_exit(&DesiredSettingsMutex);
 }
 
 void writeServos(float *controlOutputArray) {
@@ -139,6 +150,7 @@ void writeServos(float *controlOutputArray) {
 
 void setServoEnableSafe(int id, bool enabled, DesiredSettings *desiredSettings,
                         ControllerState *controllerStates) {
+  mutex_enter_blocking(&DesiredSettingsMutex);
   if (enabled) {
     desiredSettings[id].enabled = true;
     ControllerState newState;
@@ -146,4 +158,5 @@ void setServoEnableSafe(int id, bool enabled, DesiredSettings *desiredSettings,
   } else {
     desiredSettings[id].enabled = false;
   }
+  mutex_exit(&DesiredSettingsMutex);
 }

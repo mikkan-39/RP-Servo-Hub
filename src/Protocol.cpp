@@ -4,23 +4,27 @@ void UartInit() {
   uart_init(UART_ID, BAUD_RATE);
   gpio_set_function(UART_TX_PIN, GPIO_FUNC_UART);
   gpio_set_function(UART_RX_PIN, GPIO_FUNC_UART);
+
+  uart_init(SERVO_UART_ID, SERVO_BAUD_RATE);
+  gpio_set_function(SERVO_UART_TX_PIN, GPIO_FUNC_UART);
+  gpio_set_function(SERVO_UART_RX_PIN, GPIO_FUNC_UART);
 }
 
 void HalfDuplexWrite(u8 *data, int length) {
-  hw_clear_bits(&uart_get_hw(UART_ID)->cr, 0x00000200);
-  gpio_set_function(UART_RX_PIN, GPIO_FUNC_NULL);
-  gpio_set_function(UART_TX_PIN, GPIO_FUNC_UART);
+  hw_clear_bits(&uart_get_hw(SERVO_UART_ID)->cr, 0x00000200);
+  gpio_set_function(SERVO_UART_TX_PIN, GPIO_FUNC_NULL);
+  gpio_set_function(SERVO_UART_RX_PIN, GPIO_FUNC_UART);
 
-  uart_write_blocking(UART_ID, data, length);
-  uart_tx_wait_blocking(UART_ID);
+  uart_write_blocking(SERVO_UART_ID, data, length);
+  uart_tx_wait_blocking(SERVO_UART_ID);
 
-  gpio_set_function(UART_TX_PIN, GPIO_FUNC_NULL);
-  gpio_set_function(UART_RX_PIN, GPIO_FUNC_UART);
-  hw_set_bits(&uart_get_hw(UART_ID)->cr, 0x00000200);
+  gpio_set_function(SERVO_UART_TX_PIN, GPIO_FUNC_NULL);
+  gpio_set_function(SERVO_UART_RX_PIN, GPIO_FUNC_UART);
+  hw_set_bits(&uart_get_hw(SERVO_UART_ID)->cr, 0x00000200);
 
   // Dirty hack because RX disabling does not work
-  while (uart_is_readable(UART_ID)) {
-    uart_getc(UART_ID);
+  while (uart_is_readable(SERVO_UART_ID)) {
+    uart_getc(SERVO_UART_ID);
   }
 }
 
@@ -47,8 +51,8 @@ int ServoReceive(u8 *data, int len) {
   int i = 0;
   int ComData;
   while (i < len) {
-    if (uart_is_readable_within_us(UART_ID, 100)) {
-      ComData = uart_getc(UART_ID);
+    if (uart_is_readable_within_us(SERVO_UART_ID, 100)) {
+      ComData = uart_getc(SERVO_UART_ID);
       if (data) {
         data[i] = ComData;
       }
