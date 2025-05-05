@@ -40,12 +40,12 @@ void handlePing(ServoData *servoData) {
 
   mutex_enter_blocking(&ServoDataMutex);
   for (uint8_t i = 0; i < ServoNum; ++i) {
-    payload_ptr[i * bytesPerServo] = i;
+    payload_ptr[i * bytesPerServo] = i + 1;
     payload_ptr[i * bytesPerServo + 1] = servoData[i + 1].statusCode;
   }
   mutex_exit(&ServoDataMutex);
 
-  packet[3 + payload_length] = calculate_checksum(packet, 3 + payload_length - 1);
+  packet[3 + payload_length] = calculate_checksum(packet, 3 + payload_length);
 
   sendResponse(packet, 3 + payload_length + 1);
 }
@@ -71,7 +71,7 @@ void handleQueryServoPositions(ServoData *servoData) {
   }
   mutex_exit(&ServoDataMutex);
 
-  packet[3 + payload_length] = calculate_checksum(packet, 3 + payload_length - 1);
+  packet[3 + payload_length] = calculate_checksum(packet, 3 + payload_length);
 
   sendResponse(packet, 3 + payload_length + 1);
 }
@@ -97,7 +97,7 @@ void handleQueryServoSpeed(ServoData *servoData) {
   }
   mutex_exit(&ServoDataMutex);
 
-  packet[3 + payload_length] = calculate_checksum(packet, 3 + payload_length - 1);
+  packet[3 + payload_length] = calculate_checksum(packet, 3 + payload_length);
 
   sendResponse(packet, 3 + payload_length + 1);
 }

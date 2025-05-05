@@ -1,42 +1,33 @@
 #include "Core1.h"
 
 void cleanupAndExit() {
-  if (multicore_lockout_start_timeout_us(1000)) {
-    sleep_ms(1);
-    mutex_enter_blocking(&DesiredSettingsMutex);
-    for (u8 id = 1; id <= ServoNum; id++) {
-      desiredSettings[id].enabled = false;
-      controlOutputArray[id] = 0;
-    }
-    mutex_exit(&DesiredSettingsMutex);
-    writeServos(controlOutputArray);
-    multicore_lockout_end_blocking();
-    send_status(StatusCodes::OK);
-  } else {
-    multicore_lockout_end_blocking();
-    send_status(StatusCodes::LOCKOUT_FAIL);
+  uart_tx_wait_blocking(SERVO_UART_ID);
+  mutex_enter_blocking(&setupMutex);
+  for (u8 id = 1; id <= ServoNum; id++) {
+    desiredSettings[id].enabled = false;
+    controlOutputArray[id] = 0;
   }
+  writeServos(controlOutputArray);
+  mutex_exit(&setupMutex);
+  send_status(StatusCodes::OK);
 }
 
 void parse_command(uint8_t command, uint8_t length, const uint8_t *payload) {
   switch (command) {
   case MainCommands::PING:
-    if (multicore_lockout_start_timeout_us(1000)) {
-      if (!pingServos(servoData)) {
-        send_status(StatusCodes::NO_SERVOS);
-        break;
-      }
-      setupServos(desiredSettings, servoLimits);
-      handlePing(servoData);
-      multicore_lockout_end_blocking();
-    } else {
-      multicore_lockout_end_blocking();
-      send_status(StatusCodes::LOCKOUT_FAIL);
+    uart_tx_wait_blocking(SERVO_UART_ID);
+    mutex_enter_blocking(&setupMutex);
+    if (!pingServos(servoData)) {
+      // send_status(StatusCodes::NO_SERVOS);
+      // mutex_exit(&setupMutex);
+      // break;
     }
+    setupServos(desiredSettings, servoLimits);
+    handlePing(servoData);
+    mutex_exit(&setupMutex);
     break;
   case MainCommands::EXIT:
     cleanupAndExit();
-    send_status(StatusCodes::OK);
     break;
   case MainCommands::QUERY_POSITIONS:
     handleQueryServoPositions(servoData);

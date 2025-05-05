@@ -5,6 +5,11 @@ void printHexBuf(uint8_t *buf, int len) {
     printf("0x%02X%c", buf[i], i < len - 1 ? ' ' : '\n');
 }
 
+void sendRawBuf(uint8_t *buf, int len) {
+  for (int i = 0; i < len; i++)
+    stdio_putchar_raw(buf[i]);
+}
+
 uint16_t convertFloatToUShort(float value) {
   // Cap the value within the range of -4096 to 4096
   value = std::clamp(value, -4096.0f, 4096.0f);

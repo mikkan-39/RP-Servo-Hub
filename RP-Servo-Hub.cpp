@@ -13,6 +13,7 @@
 
 mutex_t ServoDataMutex;
 mutex_t DesiredSettingsMutex;
+mutex_t setupMutex;
 
 // +1 since servos are 1-indexed
 ServoData servoData[ServoNum + 1];
@@ -31,12 +32,19 @@ void calculateServoLimits() {
 
 bool tickCallback(repeating_timer_t *rt) {
   (void)rt;
+  if (!mutex_try_enter(&setupMutex, 0)) {
+    // Other core doing more important stuff, i.e.
+    // pinging, setting up or shutting down servos
+    return true;
+  }
   bool readSuccess = readServos(servoData);
   if (!readSuccess) {
+    mutex_exit(&setupMutex);
     return true;
   }
   pidTick(servoData, desiredSettings, controllerStates, controlOutputArray);
   writeServos(controlOutputArray);
+  mutex_exit(&setupMutex);
   return true;
 }
 
@@ -44,6 +52,7 @@ int main() {
   stdio_init_all();
   mutex_init(&ServoDataMutex);
   mutex_init(&DesiredSettingsMutex);
+  mutex_init(&setupMutex);
 
   UartInit();
   calculateServoLimits();
@@ -56,7 +65,6 @@ int main() {
 
   add_repeating_timer_us(-1000000 / tickRate, tickCallback, NULL, &PIDtimer);
 
-  multicore_lockout_victim_init();
   multicore_launch_core1(core1_thread);
 
   while (true) {

@@ -2,7 +2,7 @@
 
 void sendResponse(uint8_t *src, size_t len) {
 #ifdef STDIO_COMMS
-  printHexBuf(src, len);
+  sendRawBuf(src, len);
 #else
   uart_write_blocking(UART_ID, src, len);
 #endif

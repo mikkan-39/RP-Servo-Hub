@@ -9,6 +9,7 @@
 #include <stdio.h>
 
 void printHexBuf(uint8_t *buf, int len);
+void sendRawBuf(uint8_t *buf, int len);
 uint16_t convertFloatToUShort(float value);
 int pingServos(ServoData *servoData);
 void setupServos(DesiredSettings *desiredSettings, ServoLimits *servoLimits);

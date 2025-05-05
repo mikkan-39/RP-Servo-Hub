@@ -3,10 +3,11 @@
 #include "pico/multicore.h"
 #include <cstdint>
 
-// #define STDIO_COMMS
+#define STDIO_COMMS
 
 extern mutex_t ServoDataMutex;
 extern mutex_t DesiredSettingsMutex;
+extern mutex_t setupMutex;
 
 #define SERVO_UART_ID uart1
 #define SERVO_BAUD_RATE 1000000
