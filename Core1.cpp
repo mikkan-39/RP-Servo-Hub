@@ -17,11 +17,12 @@ void parse_command(uint8_t command, uint8_t length, const uint8_t *payload) {
   case MainCommands::PING:
     uart_tx_wait_blocking(SERVO_UART_ID);
     mutex_enter_blocking(&setupMutex);
-    if (!pingServos(servoData)) {
-      // send_status(StatusCodes::NO_SERVOS);
-      // mutex_exit(&setupMutex);
-      // break;
-    }
+    pingServos(servoData);
+    // if (!pingServos(servoData)) {
+    //   mutex_exit(&setupMutex);
+    //   send_status(StatusCodes::NO_SERVOS);
+    //   break;
+    // }
     setupServos(desiredSettings, servoLimits);
     handlePing(servoData);
     mutex_exit(&setupMutex);

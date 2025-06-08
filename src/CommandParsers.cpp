@@ -33,7 +33,7 @@ void handlePing(ServoData *servoData) {
                                           // payload +
                                           // checksum
   packet[0] = START_BYTE;
-  packet[1] = StatusCodes::OK;
+  packet[1] = StatusCodes::NO_SERVOS;
   packet[2] = payload_length;
 
   uint8_t *payload_ptr = &packet[3];
@@ -42,6 +42,9 @@ void handlePing(ServoData *servoData) {
   for (uint8_t i = 0; i < ServoNum; ++i) {
     payload_ptr[i * bytesPerServo] = i + 1;
     payload_ptr[i * bytesPerServo + 1] = servoData[i + 1].statusCode;
+    if (servoData[i + 1].statusCode == 0) {
+      packet[1] = StatusCodes::OK;
+    }
   }
   mutex_exit(&ServoDataMutex);
 

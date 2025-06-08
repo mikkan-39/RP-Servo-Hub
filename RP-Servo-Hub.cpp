@@ -54,6 +54,9 @@ int main() {
   mutex_init(&DesiredSettingsMutex);
   mutex_init(&setupMutex);
 
+  gpio_init(INDICTATOR_PIN);
+  gpio_set_dir(INDICTATOR_PIN, GPIO_OUT);
+
   UartInit();
   calculateServoLimits();
 

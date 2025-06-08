@@ -67,9 +67,13 @@ pico_set_program_version(RP-Servo-Hub "0.1")
 # pico_enable_stdio_uart(RP-Servo-Hub 0)
 pico_enable_stdio_usb(RP-Servo-Hub 1)
 
+
 # Add the standard library to the build
-target_link_libraries(RP-Servo-Hub
-        pico_stdlib pico_multicore)
+target_link_libraries(
+    RP-Servo-Hub
+    pico_stdlib 
+    pico_multicore
+)
 
 # Add the standard include files to the build
 target_include_directories(RP-Servo-Hub PRIVATE
@@ -77,6 +81,7 @@ target_include_directories(RP-Servo-Hub PRIVATE
 )
 
 include_directories(include)
+
 
 pico_add_extra_outputs(RP-Servo-Hub)
 

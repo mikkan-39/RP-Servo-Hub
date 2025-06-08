@@ -11,21 +11,23 @@ void UartInit() {
 }
 
 void HalfDuplexWrite(u8 *data, int length) {
-  hw_clear_bits(&uart_get_hw(SERVO_UART_ID)->cr, 0x00000200);
-  gpio_set_function(SERVO_UART_TX_PIN, GPIO_FUNC_NULL);
-  gpio_set_function(SERVO_UART_RX_PIN, GPIO_FUNC_UART);
+  // gpio_put(INDICTATOR_PIN, true);
+  // hw_clear_bits(&uart_get_hw(SERVO_UART_ID)->cr, 0x00000200);
+  // gpio_set_function(SERVO_UART_TX_PIN, GPIO_FUNC_NULL);
+  // gpio_set_function(SERVO_UART_RX_PIN, GPIO_FUNC_UART);
 
   uart_write_blocking(SERVO_UART_ID, data, length);
   uart_tx_wait_blocking(SERVO_UART_ID);
 
-  gpio_set_function(SERVO_UART_TX_PIN, GPIO_FUNC_NULL);
-  gpio_set_function(SERVO_UART_RX_PIN, GPIO_FUNC_UART);
-  hw_set_bits(&uart_get_hw(SERVO_UART_ID)->cr, 0x00000200);
+  // gpio_set_function(SERVO_UART_TX_PIN, GPIO_FUNC_NULL);
+  // gpio_set_function(SERVO_UART_RX_PIN, GPIO_FUNC_UART);
+  // hw_set_bits(&uart_get_hw(SERVO_UART_ID)->cr, 0x00000200);
 
   // Dirty hack because RX disabling does not work
   while (uart_is_readable(SERVO_UART_ID)) {
     uart_getc(SERVO_UART_ID);
   }
+  // gpio_put(INDICTATOR_PIN, false);
 }
 
 void HalfDuplexWrite(u8 data) {
