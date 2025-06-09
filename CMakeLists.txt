@@ -67,12 +67,16 @@ pico_set_program_version(RP-Servo-Hub "0.1")
 # pico_enable_stdio_uart(RP-Servo-Hub 0)
 pico_enable_stdio_usb(RP-Servo-Hub 1)
 
+add_subdirectory(pico-ssd1306)
 
 # Add the standard library to the build
 target_link_libraries(
     RP-Servo-Hub
     pico_stdlib 
     pico_multicore
+    hardware_spi
+    hardware_pwm
+    pico_ssd1306
 )
 
 # Add the standard include files to the build

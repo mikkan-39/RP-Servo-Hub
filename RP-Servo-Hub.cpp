@@ -10,6 +10,8 @@
 #include "Protocol.h"
 #include "UartUtils.h"
 #include "Utils.h"
+#include "hardware/spi.h"
+#include "pico-ssd1306/ssd1306.h"
 
 mutex_t ServoDataMutex;
 mutex_t DesiredSettingsMutex;
@@ -55,12 +57,39 @@ int main() {
   mutex_init(&setupMutex);
 
   gpio_init(INDICTATOR_PIN);
-  gpio_set_dir(INDICTATOR_PIN, GPIO_OUT);
+  gpio_set_function(INDICTATOR_PIN, GPIO_FUNC_PWM);
+
+  gpio_init(2);
+  gpio_init(3);
+  gpio_init(4);
+  gpio_init(5);
+  gpio_init(6);
+  gpio_set_function(2, GPIO_FUNC_SPI);
+  gpio_set_function(3, GPIO_FUNC_SPI);
+  gpio_set_dir(4, GPIO_OUT);
+  gpio_set_dir(5, GPIO_OUT);
+  gpio_set_dir(6, GPIO_OUT);
+
+  spi_init(spi0, 400000);
+
+  gpio_put(6, false);
+  gpio_put(4, true);
+
+  sleep_ms(250);
+
+  SSD1306 display = SSD1306(Size::W128xH64);
+  display.setOrientation(1);
 
   UartInit();
   calculateServoLimits();
 
   pingServos(servoData);
+
+  int diagnosticsCode = selfDiagnostics(&display, servoData);
+
+  if (diagnosticsCode != 0) {
+    return 0;
+  }
 
   setupServos(desiredSettings, servoLimits);
 

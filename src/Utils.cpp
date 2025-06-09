@@ -165,3 +165,111 @@ void setServoEnableSafe(int id, bool enabled, DesiredSettings *desiredSettings,
   }
   mutex_exit(&DesiredSettingsMutex);
 }
+
+// Pwm has to be initted prior to calling this
+void tone(uint gpio, uint frequency) {
+  gpio_set_function(gpio, GPIO_FUNC_PWM);
+  uint slice = pwm_gpio_to_slice_num(gpio);
+
+  float clkdiv = 1.0f;
+  uint32_t sys_clk = 125000000; // Default system clock
+
+  // Calculate wrap value
+  uint32_t wrap = (sys_clk / frequency) - 1;
+  if (wrap > 0xFFFF) {
+    // Wrap too big for 16-bit PWM counter
+    wrap = 0xFFFF;
+    clkdiv = (float)sys_clk / ((wrap + 1) * frequency);
+    if (clkdiv > 256.0f)
+      clkdiv = 256.0f; // max divider
+  }
+
+  pwm_set_clkdiv(slice, clkdiv);
+  pwm_set_wrap(slice, wrap);
+  pwm_set_chan_level(slice, pwm_gpio_to_channel(gpio), wrap / 2);
+  pwm_set_enabled(slice, true);
+}
+
+void noTone(uint gpio) {
+  uint slice = pwm_gpio_to_slice_num(gpio);
+  pwm_set_chan_level(slice, pwm_gpio_to_channel(gpio), 0);
+}
+
+int selfDiagnostics(SSD1306 *display, ServoData *servoData) {
+
+  display->clear();
+  display->addBitmapImage(0, 0, 64, 64, logoBitmap);
+  drawText(display, font_12x16, "SELF", 72, 8);
+  drawText(display, font_12x16, "TEST", 72, 40);
+  display->sendBuffer();
+  sleep_ms(1000);
+
+  pwm_config cfg = pwm_get_default_config();
+  uint slice_num = pwm_gpio_to_slice_num(INDICTATOR_PIN);
+  pwm_init(slice_num, &cfg, true);
+  uint16_t wrap = 30000;
+  pwm_set_wrap(slice_num, wrap);
+
+  // SERVO BUS TEST
+  uint8_t testData[4] = {0xDE, 0xAD, 0xBE, 0xEF};
+  uart_write_blocking(SERVO_UART_ID, testData, 4);
+  uart_tx_wait_blocking(SERVO_UART_ID);
+  uint8_t receivedData[4];
+  int receivedLen = ServoReceive(receivedData, 4);
+  if (receivedLen != 4) {
+    display->clear();
+    drawText(display, font_12x16, "BUS ERR", 22, 24);
+    display->sendBuffer();
+    for (int i = 0; i < 5; i++) {
+      pwm_set_gpio_level(INDICTATOR_PIN, wrap / 2);
+      sleep_ms(100);
+      pwm_set_gpio_level(INDICTATOR_PIN, 0);
+      sleep_ms(10);
+    }
+    return 1;
+  }
+
+  display->clear();
+  // SERVOS TEST
+  for (int id = 1; id <= ServoNum; id++) {
+    int x = (((id - 1) / 6) % 4) * 32;
+    int y = ((id - 1) % 6) * 11;
+
+    char str[6]; // 2 digits + '\0'
+    snprintf(str, sizeof(str), "ID:%02d", id);
+
+    drawText(display, font_5x8, str, x, y);
+    if (!servoData[id].pinged) {
+      fillRect(display, x, y, x + 25, y + 8, WriteMode::INVERT);
+    }
+  }
+  display->sendBuffer();
+
+  if (ConnectedServos == 0) {
+    pwm_set_clkdiv(slice_num, 1);
+    for (int i = 0; i < 3; i++) {
+      pwm_set_gpio_level(INDICTATOR_PIN, wrap / 2);
+      sleep_ms(100);
+      pwm_set_gpio_level(INDICTATOR_PIN, 0);
+      sleep_ms(10);
+    }
+
+    display->clear();
+    drawText(display, font_12x16, "NO SERVOS", 10, 24);
+    display->sendBuffer();
+
+    return 0;
+  }
+
+  // ALL OK
+  pwm_set_clkdiv(slice_num, 1);
+  pwm_set_gpio_level(INDICTATOR_PIN, wrap / 2);
+  sleep_ms(500);
+  pwm_set_gpio_level(INDICTATOR_PIN, 0);
+  pwm_set_clkdiv(slice_num, 1.25);
+  pwm_set_gpio_level(INDICTATOR_PIN, wrap / 2);
+  sleep_ms(500);
+  pwm_set_gpio_level(INDICTATOR_PIN, 0);
+
+  return 0;
+}
