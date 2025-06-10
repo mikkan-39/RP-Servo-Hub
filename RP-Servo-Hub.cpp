@@ -70,7 +70,7 @@ int main() {
   gpio_set_dir(5, GPIO_OUT);
   gpio_set_dir(6, GPIO_OUT);
 
-  spi_init(spi0, 400000);
+  spi_init(spi0, (int)2e6);
 
   gpio_put(6, false);
   gpio_put(4, true);
@@ -82,6 +82,16 @@ int main() {
 
   UartInit();
   calculateServoLimits();
+
+  // // For setting up new servos
+  // // Unlock
+  // uint8_t addr[10] = {0};
+  // ServoWriteBuf(1, ServoInstruction::WRITE, ServoAddr::LOCK, addr, 1);
+  // ServoReceive(addr, 10);
+  // // Write new ID
+  // addr[0] = 13;
+  // ServoWriteBuf(1, ServoInstruction::WRITE, ServoAddr::ID, addr, 1);
+  // ServoReceive(addr, 10);
 
   pingServos(servoData);
 
