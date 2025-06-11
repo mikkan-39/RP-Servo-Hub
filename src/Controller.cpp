@@ -2,20 +2,20 @@
 
 constexpr float integralClamp = 1024.0f;
 
-float computePID(int16_t setpoint, int16_t actualPosition, int16_t maxLoad, int16_t current,
-                 ControllerState &controller) {
-  float error = setpoint - actualPosition;
+float computePID(int16_t actualPosition, int16_t maxLoad, int16_t current,
+                 ControllerState &controller, bool wrapped) {
+  float error = controller.positionSetpoint - actualPosition;
 
   // printf("Setpoint %d\n", setpoint);
   // printf("Position %d\n", actualPosition);
 
-  // For 360-control
-  // // Ensure that error is within the range -2048 to +2047
-  // if (error > 2047) {
-  //   error -= 4096;  // Wrap around in the negative direction
-  // } else if (error < -2048) {
-  //   error += 4096;  // Wrap around in the positive direction
-  // }
+  if (wrapped) {
+    if (error > 2047) {
+      error -= 4096; // Wrap around in the negative direction
+    } else if (error < -2048) {
+      error += 4096; // Wrap around in the positive direction
+    }
+  }
 
   controller.integral += error;
   controller.integral = std::clamp(controller.integral, -integralClamp, integralClamp);
@@ -50,6 +50,7 @@ int updateServoControl(int servoID, int frequency, ServoData *servoData,
                        DesiredSettings *desiredSettings, ControllerState *controllerStates) {
   // Retrieve sensor data
   int16_t position = servoData[servoID].position;
+  int16_t previousPosition = servoData[servoID].previousPosition;
   // int16_t velocity = servoData[servoID].velocity;
   // int16_t acceleration = servoData[servoID].acceleration;
   int16_t current = servoData[servoID].motorCurrent;
@@ -83,6 +84,10 @@ int updateServoControl(int servoID, int frequency, ServoData *servoData,
   //   return 0; // HACK
   // }
 
+  if (abs(previousPosition - position) > 2048) {
+    servoData[servoID].wrapped = !servoData[servoID].wrapped;
+  }
+
   // Determine position setpoint accounting for speed
   if (targetSpeed > 0) {
     int16_t delta = targetSpeed / frequency;
@@ -98,7 +103,7 @@ int updateServoControl(int servoID, int frequency, ServoData *servoData,
 
   // Compute PID control with integrated current limiting
   float controlOutput =
-      computePID(controller.positionSetpoint, position, maxLoad, current, controller);
+      computePID(position, maxLoad, current, controller, servoData[servoID].wrapped);
 
   // Store the output
   return controlOutput;

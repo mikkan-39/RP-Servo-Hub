@@ -20,8 +20,8 @@ uint16_t convertFloatToUShort(float value) {
   // Convert value to range 0-1000
   uint16_t magnitude = static_cast<uint16_t>((std::abs(value) / 4096.0f) * 1000.0f);
 
-  if (magnitude < 50 && magnitude > 10)
-    magnitude = 50;
+  // if (magnitude < 50 && magnitude > 10)
+  //   magnitude = 50;
 
   // Ensure magnitude is within bounds
   magnitude = std::min(magnitude, static_cast<uint16_t>(1000));
@@ -77,7 +77,7 @@ bool readServos(ServoData *servoData) {
   if (ConnectedServos == 0 && pingServos(servoData) == 0)
     return false;
 
-  int dataLen = 4;
+  int dataLen = 2;
   int rxPacketLen = dataLen + 6;
   SyncRead(ConnectedIDs, ConnectedServos, ServoAddr::PRESENT_POSITION_L, dataLen);
 
@@ -94,33 +94,39 @@ bool readServos(ServoData *servoData) {
 
     mutex_enter_blocking(&ServoDataMutex);
     servoData[result.id].statusCode = result.status;
+    servoData[result.id].previousPosition = servoData[result.id].position;
     servoData[result.id].position = SCS2Host(result.parameters[0], result.parameters[1]);
-    servoData[result.id].velocity = SCS2Host(result.parameters[2], result.parameters[3]);
-    servoData[result.id].motorCurrent =
-        SCS2Host(result.parameters[4], result.parameters[5]); // TODO What is this?
+    servoData[result.id].velocity =
+        servoData[result.id].position - servoData[result.id].previousPosition;
+    // servoData[result.id].velocity =
+    // SCS2Host(result.parameters[2], result.parameters[3]);
+    // servoData[result.id].motorCurrent =
+    //     SCS2Host(result.parameters[4],
+    //     result.parameters[5]);
+    //     // TODO What is this?
     mutex_exit(&ServoDataMutex);
   }
 
-  dataLen = 2;
-  rxPacketLen = dataLen + 6;
-  SyncRead(ConnectedIDs, ConnectedServos, ServoAddr::PRESENT_CURRENT_L, dataLen);
+  // dataLen = 2;
+  // rxPacketLen = dataLen + 6;
+  // SyncRead(ConnectedIDs, ConnectedServos, ServoAddr::PRESENT_CURRENT_L, dataLen);
 
-  for (int i = 0; i < ConnectedServos; i++) {
-    u8 packet[rxPacketLen];
-    int receivedBytes = ServoReceive(packet, rxPacketLen);
+  // for (int i = 0; i < ConnectedServos; i++) {
+  //   u8 packet[rxPacketLen];
+  //   int receivedBytes = ServoReceive(packet, rxPacketLen);
 
-    if (receivedBytes != rxPacketLen)
-      continue;
+  //   if (receivedBytes != rxPacketLen)
+  //     continue;
 
-    ServoResponse result = ServoDecode(packet, rxPacketLen);
-    if (!result.valid)
-      continue;
+  //   ServoResponse result = ServoDecode(packet, rxPacketLen);
+  //   if (!result.valid)
+  //     continue;
 
-    mutex_enter_blocking(&ServoDataMutex);
-    servoData[result.id].statusCode = result.status;
-    servoData[result.id].motorCurrent = SCS2Host(result.parameters[0], result.parameters[1]);
-    mutex_exit(&ServoDataMutex);
-  }
+  //   mutex_enter_blocking(&ServoDataMutex);
+  //   servoData[result.id].statusCode = result.status;
+  //   servoData[result.id].motorCurrent = SCS2Host(result.parameters[0], result.parameters[1]);
+  //   mutex_exit(&ServoDataMutex);
+  // }
 
   return true;
 }

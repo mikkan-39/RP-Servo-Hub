@@ -9,9 +9,11 @@ struct ServoData {
   bool pinged = false;
   unsigned char statusCode = 255; // 255 for unknown
   int16_t position = 0;
+  int16_t previousPosition = 0;
   int16_t velocity = 0;
   int16_t acceleration = 0;
   int16_t motorCurrent = 0;
+  bool wrapped = false;
 };
 
 struct DesiredSettings {
@@ -25,9 +27,10 @@ struct DesiredSettings {
 
 struct ControllerState {
   // Position control PID gains
-  float kp = 10.0f;
-  float ki = 0.05f;
-  float kd = 8.0f;
+  // TODO TEST THIS
+  float kp = 5.0f;
+  float ki = 0.25f;
+  float kd = 4.0f;
   // Integral gain for current limiting
   float kiCurrent = 0.1f;
 
@@ -37,9 +40,6 @@ struct ControllerState {
   float previousError = 0.0f;
 
   int16_t positionSetpoint = 2048;
-
-  int16_t previousPosition = 2048; // For sensor wrapping detection. Set to middle value for the
-                                   // first tick, thus possibly unfit for speed calculations
 };
 
 int updateServoControl(int servoID, int frequency, ServoData *servoData,
