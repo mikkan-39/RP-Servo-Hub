@@ -5,6 +5,24 @@
 
 namespace pico_ssd1306 {
 SSD1306::SSD1306(Size size) {
+  gpio_init(2);
+  gpio_init(3);
+  gpio_init(4);
+  gpio_init(5);
+  gpio_init(6);
+  gpio_set_function(2, GPIO_FUNC_SPI);
+  gpio_set_function(3, GPIO_FUNC_SPI);
+  gpio_set_dir(4, GPIO_OUT);
+  gpio_set_dir(5, GPIO_OUT);
+  gpio_set_dir(6, GPIO_OUT);
+
+  spi_init(spi0, (int)2e6);
+
+  gpio_put(6, false);
+  gpio_put(4, true);
+
+  sleep_ms(250);
+
   this->size = size;
 
   this->width = 128;

@@ -14,8 +14,11 @@ enum MainCommands : uint8_t {
   QUERY_SPEED = 0x03,
   SET_POS = 0x04,
   SET_SPEED = 0x05,
-  SET_ENABLED = 0x06,
-  EXIT = 0x07,
+  SET_SYMMETRIC_ACCEL = 0x06,
+  SET_ACCEL = 0x07,
+  SET_DECEL = 0x08,
+  SET_ENABLED = 0x09,
+  EXIT = 0x0A,
 };
 
 enum StatusCodes : uint8_t {

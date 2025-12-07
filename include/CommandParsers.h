@@ -12,9 +12,17 @@ void handleQueryServoPositions(ServoData *servoData);
 void handleQueryServoSpeed(ServoData *servoData);
 
 void handleSetServoPositions(const uint8_t *payload, uint8_t length,
-                             DesiredSettings *desiredSettings);
+                             DesiredSettings *desiredSettings, ServoData *servoData,
+                             ControllerState *controllerStates);
+
 void handleSetServoSpeeds(const uint8_t *payload, uint8_t length, DesiredSettings *desiredSettings);
-void handleSetServoEnabled(const uint8_t *payload, uint8_t length,
-                           DesiredSettings *desiredSettings);
+void handleSetServoEnabled(const uint8_t *payload, uint8_t length, DesiredSettings *desiredSettings,
+                           ServoData *servoData, ControllerState *controllerStates);
+void handleSetServoAccelerations(const uint8_t *payload, uint8_t length,
+                                 DesiredSettings *desiredSettings);
+void handleSetServoForwardAccelerations(const uint8_t *payload, uint8_t length,
+                                        DesiredSettings *desiredSettings);
+void handleSetServoBackwardAccelerations(const uint8_t *payload, uint8_t length,
+                                         DesiredSettings *desiredSettings);
 
 #endif

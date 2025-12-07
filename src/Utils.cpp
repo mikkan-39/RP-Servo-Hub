@@ -309,14 +309,33 @@ int selfDiagnostics(SSD1306 *display, ServoData *servoData) {
   }
 
   // ALL OK
-  pwm_set_clkdiv(slice_num, 1);
+  pwm_set_clkdiv(slice_num, 1.5);
   pwm_set_gpio_level(INDICTATOR_PIN, wrap / 2);
-  sleep_ms(500);
+  sleep_ms(200);
   pwm_set_gpio_level(INDICTATOR_PIN, 0);
   pwm_set_clkdiv(slice_num, 1.25);
+  pwm_set_gpio_level(INDICTATOR_PIN, wrap / 2);
+  sleep_ms(200);
+  pwm_set_gpio_level(INDICTATOR_PIN, 0);
+  pwm_set_clkdiv(slice_num, 1.0);
   pwm_set_gpio_level(INDICTATOR_PIN, wrap / 2);
   sleep_ms(500);
   pwm_set_gpio_level(INDICTATOR_PIN, 0);
 
+  return 0;
+}
+
+int drawDesiredSetting(SSD1306 *display, DesiredSettings *desiredSettings) {
+  display->clear();
+  // SERVOS TEST
+  for (int id = 1; id <= ServoNum; id++) {
+    int x = (((id - 1) / 6) % 4) * 32;
+    int y = ((id - 1) % 6) * 11;
+
+    char str[7]; // 2 digits + '\0'
+    snprintf(str, sizeof(str), "%04d", desiredSettings[id].targetSpeed);
+    drawText(display, font_5x8, str, x, y);
+  }
+  display->sendBuffer();
   return 0;
 }

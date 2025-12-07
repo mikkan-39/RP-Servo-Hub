@@ -106,12 +106,14 @@ void handleQueryServoSpeed(ServoData *servoData) {
 }
 
 void handleSetServoPositions(const uint8_t *payload, uint8_t length,
-                             DesiredSettings *desiredSettings) {
+                             DesiredSettings *desiredSettings, ServoData *servoData,
+                             ControllerState *controllerStates) {
   size_t i = 0;
   mutex_enter_blocking(&DesiredSettingsMutex);
   while (i + 2 <= length) {
     uint8_t id = payload[i++];
     desiredSettings[id].enabled = true;
+    controllerStates[id].positionSetpoint = servoData[id].position;
     int16_t value = (int16_t)(payload[i] | (payload[i + 1] << 8));
     i += 2;
     if (id > ServoNum)
@@ -136,8 +138,54 @@ void handleSetServoSpeeds(const uint8_t *payload, uint8_t length,
   mutex_exit(&DesiredSettingsMutex);
 }
 
-void handleSetServoEnabled(const uint8_t *payload, uint8_t length,
-                           DesiredSettings *desiredSettings) {
+void handleSetServoAccelerations(const uint8_t *payload, uint8_t length,
+                                 DesiredSettings *desiredSettings) {
+  size_t i = 0;
+  mutex_enter_blocking(&DesiredSettingsMutex);
+  while (i + 2 <= length) {
+    uint8_t id = payload[i++];
+    int16_t value = (int16_t)(payload[i] | (payload[i + 1] << 8));
+    i += 2;
+    if (id > ServoNum)
+      continue;
+    desiredSettings[id].acceleration = value;
+    desiredSettings[id].deceleration = value;
+  }
+  mutex_exit(&DesiredSettingsMutex);
+}
+
+void handleSetServoForwardAccelerations(const uint8_t *payload, uint8_t length,
+                                        DesiredSettings *desiredSettings) {
+  size_t i = 0;
+  mutex_enter_blocking(&DesiredSettingsMutex);
+  while (i + 2 <= length) {
+    uint8_t id = payload[i++];
+    int16_t value = (int16_t)(payload[i] | (payload[i + 1] << 8));
+    i += 2;
+    if (id > ServoNum)
+      continue;
+    desiredSettings[id].acceleration = value;
+  }
+  mutex_exit(&DesiredSettingsMutex);
+}
+
+void handleSetServoBackwardAccelerations(const uint8_t *payload, uint8_t length,
+                                         DesiredSettings *desiredSettings) {
+  size_t i = 0;
+  mutex_enter_blocking(&DesiredSettingsMutex);
+  while (i + 2 <= length) {
+    uint8_t id = payload[i++];
+    int16_t value = (int16_t)(payload[i] | (payload[i + 1] << 8));
+    i += 2;
+    if (id > ServoNum)
+      continue;
+    desiredSettings[id].deceleration = value;
+  }
+  mutex_exit(&DesiredSettingsMutex);
+}
+
+void handleSetServoEnabled(const uint8_t *payload, uint8_t length, DesiredSettings *desiredSettings,
+                           ServoData *servoData, ControllerState *controllerStates) {
   size_t i = 0;
   mutex_enter_blocking(&DesiredSettingsMutex);
   while (i + 2 <= length) {
@@ -147,6 +195,8 @@ void handleSetServoEnabled(const uint8_t *payload, uint8_t length,
     if (id > ServoNum)
       continue;
     desiredSettings[id].enabled = value;
+    desiredSettings[id].targetPosition = servoData[id].position;
+    controllerStates[id].positionSetpoint = servoData[id].position;
   }
   mutex_exit(&DesiredSettingsMutex);
 }

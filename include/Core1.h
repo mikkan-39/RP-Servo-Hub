@@ -14,8 +14,10 @@
 
 extern ServoData servoData[ServoNum + 1];
 extern DesiredSettings desiredSettings[ServoNum + 1];
+extern ControllerState controllerStates[ServoNum + 1];
 extern float controlOutputArray[ServoNum + 1];
 extern ServoLimits servoLimits[ServoNum + 1];
+extern SSD1306 display;
 
 void core1_thread();
 

@@ -22,6 +22,7 @@ ServoData servoData[ServoNum + 1];
 DesiredSettings desiredSettings[ServoNum + 1] = {};
 ControllerState controllerStates[ServoNum + 1] = {};
 float controlOutputArray[ServoNum + 1] = {};
+SSD1306 display = SSD1306(Size::W128xH64);
 
 ServoLimits servoLimits[ServoNum + 1] = {};
 
@@ -59,25 +60,6 @@ int main() {
   gpio_init(INDICTATOR_PIN);
   gpio_set_function(INDICTATOR_PIN, GPIO_FUNC_PWM);
 
-  gpio_init(2);
-  gpio_init(3);
-  gpio_init(4);
-  gpio_init(5);
-  gpio_init(6);
-  gpio_set_function(2, GPIO_FUNC_SPI);
-  gpio_set_function(3, GPIO_FUNC_SPI);
-  gpio_set_dir(4, GPIO_OUT);
-  gpio_set_dir(5, GPIO_OUT);
-  gpio_set_dir(6, GPIO_OUT);
-
-  spi_init(spi0, (int)2e6);
-
-  gpio_put(6, false);
-  gpio_put(4, true);
-
-  sleep_ms(250);
-
-  SSD1306 display = SSD1306(Size::W128xH64);
   display.setOrientation(1);
 
   UartInit();

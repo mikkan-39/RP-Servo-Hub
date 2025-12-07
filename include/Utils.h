@@ -25,5 +25,6 @@ void pidTick(ServoData *servoData, DesiredSettings *desiredSettings,
 void writeServos(float *controlOutputArray);
 void setServoEnableSafe(bool enabled, DesiredSettings *desiredSettings);
 int selfDiagnostics(SSD1306 *display, ServoData *servoData);
+int drawDesiredSetting(SSD1306 *display, DesiredSettings *desiredSettings);
 
 #endif

@@ -37,15 +37,28 @@ void parse_command(uint8_t command, uint8_t length, const uint8_t *payload) {
     handleQueryServoSpeed(servoData);
     break;
   case MainCommands::SET_POS:
-    handleSetServoPositions(payload, length, desiredSettings);
+    handleSetServoPositions(payload, length, desiredSettings, servoData, controllerStates);
     send_status(StatusCodes::OK);
     break;
   case MainCommands::SET_SPEED:
     handleSetServoSpeeds(payload, length, desiredSettings);
     send_status(StatusCodes::OK);
+    // drawDesiredSetting(&display, desiredSettings);
+    break;
+  case MainCommands::SET_SYMMETRIC_ACCEL:
+    handleSetServoAccelerations(payload, length, desiredSettings);
+    send_status(StatusCodes::OK);
+    break;
+  case MainCommands::SET_ACCEL:
+    handleSetServoForwardAccelerations(payload, length, desiredSettings);
+    send_status(StatusCodes::OK);
+    break;
+  case MainCommands::SET_DECEL:
+    handleSetServoBackwardAccelerations(payload, length, desiredSettings);
+    send_status(StatusCodes::OK);
     break;
   case MainCommands::SET_ENABLED:
-    handleSetServoEnabled(payload, length, desiredSettings);
+    handleSetServoEnabled(payload, length, desiredSettings, servoData, controllerStates);
     send_status(StatusCodes::OK);
     break;
   default:

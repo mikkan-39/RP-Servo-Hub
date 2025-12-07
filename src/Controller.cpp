@@ -1,53 +1,66 @@
 #include "Controller.h"
 
 constexpr float integralClamp = 1024.0f;
+constexpr float maxOutput = 4000.0f;
+constexpr float derivativeFilterAlpha = 0.3f;  // 0.3 = 30% new, 70% old
 
 float computePID(int16_t actualPosition, int16_t maxLoad, int16_t current,
                  ControllerState &controller, bool wrapped) {
-  float error = controller.positionSetpoint - actualPosition;
-
-  // printf("Setpoint %d\n", setpoint);
-  // printf("Position %d\n", actualPosition);
+  float position = static_cast<float>(actualPosition);
+  float error = controller.positionSetpoint - position;
 
   if (wrapped) {
     if (error > 2047) {
-      error -= 4096; // Wrap around in the negative direction
+      error -= 4096;
     } else if (error < -2048) {
-      error += 4096; // Wrap around in the positive direction
+      error += 4096;
     }
   }
 
   controller.integral += error;
   controller.integral = std::clamp(controller.integral, -integralClamp, integralClamp);
-  float derivative = error - controller.previousError;
-  controller.previousError = error;
 
-  // printf("P %f\n", error * controller.kp);
-  // printf("I %f\n", controller.integral * controller.ki);
-  // printf("D %f\n", derivative * controller.kd);
+  // Derivative on measurement (not error) to avoid setpoint-change spikes
+  float rawDerivative = -(position - controller.previousPosition);
+  
+  // Handle wrap-around in derivative calculation
+  if (rawDerivative > 2047) {
+    rawDerivative -= 4096;
+  } else if (rawDerivative < -2048) {
+    rawDerivative += 4096;
+  }
+  
+  // Low-pass filter on derivative to reduce noise amplification
+  controller.filteredDerivative = derivativeFilterAlpha * rawDerivative +
+                                  (1.0f - derivativeFilterAlpha) * controller.filteredDerivative;
+  controller.previousPosition = position;
+
+  float output = controller.kp * error + 
+                 controller.ki * controller.integral +
+                 controller.kd * controller.filteredDerivative;
 
   // Current limiting inside PID control
+  float currentLimitFactor = 1.0f;
   if (maxLoad > 0) {
     float currentError = float(current) - float(maxLoad);
     controller.integralCurrent += currentError;
     controller.integralCurrent = std::clamp(controller.integralCurrent, 0.0f, integralClamp);
-    float currentLimitFactor =
-        std::clamp(1.0f - controller.kiCurrent * controller.integralCurrent, 0.1f, 1.0f);
-    // printf("PresentCurrent %d\n", current);
-    // printf("CurrentError %f\n", currentError);
-    // printf("CurrentLimit %f\n", currentLimitFactor);
-    return (controller.kp * error + controller.ki * controller.integral +
-            controller.kd * derivative) *
-           currentLimitFactor * -1.0f;
+    currentLimitFactor = std::clamp(1.0f - controller.kiCurrent * controller.integralCurrent, 0.1f, 1.0f);
   }
 
-  return (controller.kp * error + controller.ki * controller.integral +
-          controller.kd * derivative) *
-         -1.0f;
+  output *= currentLimitFactor;
+  output = std::clamp(output, -maxOutput, maxOutput);
+  
+  return output * -1.0f;
 }
 
 int updateServoControl(int servoID, int frequency, ServoData *servoData,
                        DesiredSettings *desiredSettings, ControllerState *controllerStates) {
+
+  // Retrieve PID state
+  ControllerState &controller = controllerStates[servoID];
+  int16_t targetPosition = desiredSettings[servoID].targetPosition;
+
   // Retrieve sensor data
   int16_t position = servoData[servoID].position;
   int16_t previousPosition = servoData[servoID].previousPosition;
@@ -60,6 +73,7 @@ int updateServoControl(int servoID, int frequency, ServoData *servoData,
   int16_t maxLoad = desiredSettings[servoID].maxLoad;
   int16_t minPosition = desiredSettings[servoID].minPosition;
   int16_t maxPosition = desiredSettings[servoID].maxPosition;
+  int16_t accel = desiredSettings[servoID].acceleration;
 
   // Apply hard positional limits
   if (desiredSettings[servoID].targetPosition < minPosition) {
@@ -68,11 +82,6 @@ int updateServoControl(int servoID, int frequency, ServoData *servoData,
   if (desiredSettings[servoID].targetPosition > maxPosition) {
     desiredSettings[servoID].targetPosition = maxPosition;
   }
-  int16_t targetPosition = desiredSettings[servoID].targetPosition;
-
-  // printf("\n\nTarget position %d\n", targetPosition);
-  // Retrieve PID state
-  ControllerState &controller = controllerStates[servoID];
 
   // Estimate previous position
   // int16_t previousPosition = position - (velocity / frequency);
@@ -90,7 +99,11 @@ int updateServoControl(int servoID, int frequency, ServoData *servoData,
 
   // Determine position setpoint accounting for speed
   if (targetSpeed > 0) {
-    int16_t delta = targetSpeed / frequency;
+    int16_t delta = std::max(1, targetSpeed / frequency);
+    // if (servoID == 13) {
+    //   printf("targetspeed, frequency and delta for servo 13: %d %d %d\n", targetSpeed, frequency,
+    //          delta);
+    // }
     if (std::abs(targetPosition - controller.positionSetpoint) < delta) {
       controller.positionSetpoint = targetPosition;
     } else {
@@ -101,10 +114,20 @@ int updateServoControl(int servoID, int frequency, ServoData *servoData,
     controller.positionSetpoint = targetPosition;
   }
 
+  // if (servoID == 13) {
+  //   printf("setpoint for servo 13: %d \n", controller.positionSetpoint);
+  // }
+
   // Compute PID control with integrated current limiting
   float controlOutput =
       computePID(position, maxLoad, current, controller, servoData[servoID].wrapped);
 
+  // TODO sloppy, implement proper accel-decel
+  float clamp = 1.f;
+  if (accel > 0) {
+    clamp = std::min(float(accel) / 1000, 1.f);
+  }
+
   // Store the output
-  return controlOutput;
+  return controlOutput * clamp;
 }
